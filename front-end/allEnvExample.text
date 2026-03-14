@@ -1,0 +1,39 @@
+Admin Front-end---------
+
+
+VITE_API_URL=http://localhost:5000
+# VITE_API_URL=https://newapi.enjoy365.online
+
+
+# enjoy365
+# VITE_API_URL=https://newapi.enjoy365.online
+
+# velki360
+# VITE_API_URL=https://api.velki360.com
+
+VITE_API_URL=http://localhost:5000
+
+#  motheradmin
+# VITE_USER_ROLE=TOPADMIN
+
+#  admin
+VITE_USER_ROLE=LOWADMIN
+
+# VITE_API_URL=https://api.badononline.com
+
+
+
+
+Admin Back-end-----------------
+
+PORT=5000
+# MONGO_URI=mongodb+srv://oracleUser:KhkaYL4iVGobLqeK@cluster0.to14ojs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+MONGO_URI=mongodb+srv://oracleUser:KhkaYL4iVGobLqeK@cluster0.to14ojs.mongodb.net/velki?retryWrites=true&w=majority&appName=Cluster0
+
+
+Main Client ------------
+
+# VITE_BASE_API_URL=https://velkiapi.oraclesoft.org
+# VITE_BASE_API_URL=http://localhost:4002
+# VITE_API_URL=https://api.badononline.com      
+VITE_API_URL=http://localhost:5000       
