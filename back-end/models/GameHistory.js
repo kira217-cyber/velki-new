@@ -7,6 +7,7 @@ const gameHistory = new mongoose.Schema(
     username: {
       type: String,
       required: true,
+      trim: true,
     },
     provider_code: {
       type: String,
@@ -29,30 +30,52 @@ const gameHistory = new mongoose.Schema(
       required: true,
       min: 0,
     },
+
+    // ✅ required না
+    // ✅ duplicate হলেও problem নাই
     transaction_id: {
       type: String,
-      required: true,
-      unique: true, // খুবই জরুরি! ডুপ্লিকেট প্রিভেন্ট করবে
+      default: null,
+      trim: true,
     },
-    verification_key: String,
-    times: String, // ISO string বা timestamp
+
+    verification_key: {
+      type: String,
+      default: "",
+    },
+
+    times: {
+      type: String,
+      default: "",
+    },
+
     status: {
       type: String,
       enum: ["won", "lost", "cancelled", "refunded"],
       default: function () {
-        return this.bet_type === "SETTLE" ? "won" : "lost";
+        if (this.bet_type === "SETTLE") return "won";
+        if (this.bet_type === "CANCEL") return "cancelled";
+        if (this.bet_type === "REFUND") return "refunded";
+        return "lost";
       },
     },
-    round_id: String, // optional
-    bet_details: mongoose.Schema.Types.Mixed, // যদি আরো ডিটেইলস থাকে
+
+    round_id: {
+      type: String,
+      default: "",
+    },
+
+    bet_details: mongoose.Schema.Types.Mixed,
   },
   {
-    timestamps: true, // createdAt, updatedAt অটো যোগ হবে
-  }
+    timestamps: true,
+  },
 );
 
-// ইনডেক্স যোগ করে দ্রুত সার্চ করা যায়
+// ✅ normal index (duplicate allow করবে)
 gameHistory.index({ transaction_id: 1 });
+
+// ✅ other indexes
 gameHistory.index({ username: 1, createdAt: -1 });
 gameHistory.index({ provider_code: 1 });
 

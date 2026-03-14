@@ -304,7 +304,7 @@ const SubAdmin = () => {
                     {u.role}
                   </span>
                   <span className="text-blue-600 font-bold underline cursor-pointer hover:no-underline">
-                    {u.firstName} {u.lastName}
+                    {u.username}
                   </span>
                 </td>
                 <td className="p-2 text-right">{u.credit?.toLocaleString()}</td>

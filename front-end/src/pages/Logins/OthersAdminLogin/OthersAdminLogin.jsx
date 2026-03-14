@@ -63,10 +63,10 @@ const OthersAdminLogin = () => {
       if (data?.user) {
         login(data.user);
         toast.success("Login successful!");
-        if      (data.user.role === "SA") navigate("/sa/sub-admin");
-        else if (data.user.role === "MT") navigate("/mt/master");
-        else if (data.user.role === "AG") navigate("/ag/agent");
-        else if (data.user.role === "SG") navigate("/sg/sub-agent");
+        if      (data.user.role === "SA") navigate("/sa/master");
+        else if (data.user.role === "MT") navigate("/mt/agent");
+        else if (data.user.role === "AG") navigate("/ag/sub-agent");
+        else if (data.user.role === "SG") navigate("/sg/users");
         else {
           toast.error("You do not have permission to access this page!");
           navigate("/restricted");

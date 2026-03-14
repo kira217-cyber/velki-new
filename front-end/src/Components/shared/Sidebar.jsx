@@ -49,28 +49,28 @@ const Sidebar = () => {
     ];
   } else if (motherAdmin?.role === "SA") {
     downlineDropdown = [
-      { name: "Sub Admin", path: `/${"sa"}/sub-admin` },
+      // { name: "Sub Admin", path: `/${"sa"}/sub-admin` },
       { name: "Master", path: `/${"sa"}/master` },
-      { name: "Agent", path: `/${"sa"}/agent` },
-      { name: "Sub Agent", path: `/${"sa"}/sub-agent` },
-      { name: "User", path: `/${"sa"}/users` },
+      // { name: "Agent", path: `/${"sa"}/agent` },
+      // { name: "Sub Agent", path: `/${"sa"}/sub-agent` },
+      // { name: "User", path: `/${"sa"}/users` },
     ];
   } else if (motherAdmin?.role === "MT") {
     downlineDropdown = [
-      { name: "Master", path: `/${"mt"}/master` },
+      // { name: "Master", path: `/${"mt"}/master` },
       { name: "Agent", path: `/${"mt"}/agent` },
-      { name: "Sub Agent", path: `/${"mt"}/sub-agent` },
-      { name: "User", path: `/${"mt"}/users` },
+      // { name: "Sub Agent", path: `/${"mt"}/sub-agent` },
+      // { name: "User", path: `/${"mt"}/users` },
     ];
   } else if (motherAdmin?.role === "AG") {
     downlineDropdown = [
-      { name: "Agent", path: `/${"ag"}/agent` },
+      // { name: "Agent", path: `/${"ag"}/agent` },
       { name: "Sub Agent", path: `/${"ag"}/sub-agent` },
-      { name: "User", path: `/${"ag"}/users` },
+      // { name: "User", path: `/${"ag"}/users` },
     ];
   } else if (motherAdmin?.role === "SG") {
     downlineDropdown = [
-      { name: "Sub Agent", path: `/${"sg"}/sub-agent` },
+      // { name: "Sub Agent", path: `/${"sg"}/sub-agent` },
       { name: "User", path: `/${"sg"}/users` },
     ];
   } else if (motherAdmin?.role === "US") {

@@ -312,14 +312,14 @@ export const routes = createBrowserRouter([
       </SubAdminPrivetRoute>
     ),
     children: [
-      {
-        path: "sub-admin",
-        element: (
-          <SubAdminPrivetRoute>
-            <SubAdmin></SubAdmin>
-          </SubAdminPrivetRoute>
-        ),
-      },
+      // {
+      //   path: "sub-admin",
+      //   element: (
+      //     <SubAdminPrivetRoute>
+      //       <SubAdmin></SubAdmin>
+      //     </SubAdminPrivetRoute>
+      //   ),
+      // },
       {
         path: "account-summary",
         element: <AccountSummary />,
@@ -452,14 +452,14 @@ export const routes = createBrowserRouter([
       </MasterPrivetRoute>
     ),
     children: [
-      {
-        path: "master",
-        element: (
-          <MasterPrivetRoute>
-            <Master></Master>
-          </MasterPrivetRoute>
-        ),
-      },
+      // {
+      //   path: "master",
+      //   element: (
+      //     <MasterPrivetRoute>
+      //       <Master></Master>
+      //     </MasterPrivetRoute>
+      //   ),
+      // },
       {
         path: "account-summary",
         element: <AccountSummary />,
@@ -590,14 +590,14 @@ export const routes = createBrowserRouter([
       </AgentPrivetRoute>
     ),
     children: [
-      {
-        path: "agent",
-        element: (
-          <AgentPrivetRoute>
-            <Agent></Agent>
-          </AgentPrivetRoute>
-        ),
-      },
+      // {
+      //   path: "agent",
+      //   element: (
+      //     <AgentPrivetRoute>
+      //       <Agent></Agent>
+      //     </AgentPrivetRoute>
+      //   ),
+      // },
       {
         path: "account-summary",
         element: <AccountSummary />,
@@ -724,14 +724,14 @@ export const routes = createBrowserRouter([
       </SubAgentPrivetRoute>
     ),
     children: [
-      {
-        path: "sub-agent",
-        element: (
-          <SubAgentPrivetRoute>
-            <SubAgent></SubAgent>
-          </SubAgentPrivetRoute>
-        ),
-      },
+      // {
+      //   path: "sub-agent",
+      //   element: (
+      //     <SubAgentPrivetRoute>
+      //       <SubAgent></SubAgent>
+      //     </SubAgentPrivetRoute>
+      //   ),
+      // },
       {
         path: "account-summary",
         element: <AccountSummary />,
