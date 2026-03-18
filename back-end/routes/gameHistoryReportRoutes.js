@@ -10,6 +10,102 @@ dayjs.extend(timezone);
 
 const router = express.Router();
 
+const ROLE = {
+  MA: "MA",
+  SA: "SA",
+  MT: "MT",
+  AG: "AG",
+  SG: "SG",
+  US: "US",
+};
+
+const ALLOWED_VIEW_ROLES = new Set([
+  ROLE.MA,
+  ROLE.SA,
+  ROLE.MT,
+  ROLE.AG,
+  ROLE.SG,
+  ROLE.US,
+]);
+
+const toObjectId = (id) => new mongoose.Types.ObjectId(id);
+
+const uniqueStringIds = (ids = []) => [...new Set(ids.map((id) => String(id)))];
+
+async function getSelfAndDescendantIds(startIds = []) {
+  if (!startIds.length) return [];
+
+  const objectIds = startIds.map((id) => toObjectId(id));
+
+  const rows = await Admin.aggregate([
+    {
+      $match: {
+        _id: { $in: objectIds },
+      },
+    },
+    {
+      $graphLookup: {
+        from: Admin.collection.name, // usually "admins"
+        startWith: "$_id",
+        connectFromField: "_id",
+        connectToField: "createdBy",
+        as: "descendants",
+      },
+    },
+    {
+      $project: {
+        selfId: "$_id",
+        descendantIds: "$descendants._id",
+      },
+    },
+  ]);
+
+  const allIds = [];
+  for (const row of rows) {
+    allIds.push(String(row.selfId));
+    for (const id of row.descendantIds || []) {
+      allIds.push(String(id));
+    }
+  }
+
+  return uniqueStringIds(allIds);
+}
+
+async function getAllowedTreeIds(currentAdminId) {
+  const ids = await getSelfAndDescendantIds([currentAdminId]);
+  return ids;
+}
+
+async function getUserIdsFromTree(treeIds = []) {
+  if (!treeIds.length) return [];
+
+  const users = await Admin.find(
+    {
+      _id: { $in: treeIds.map((id) => toObjectId(id)) },
+      role: ROLE.US,
+    },
+    { _id: 1 },
+  ).lean();
+
+  return uniqueStringIds(users.map((u) => u._id));
+}
+
+async function getMatchedAdminIdsWithinScope(searchText, scopedTreeIds = []) {
+  if (!searchText?.trim() || !scopedTreeIds.length) return [];
+
+  const regex = new RegExp(searchText.trim(), "i");
+
+  const matched = await Admin.find(
+    {
+      _id: { $in: scopedTreeIds.map((id) => toObjectId(id)) },
+      username: regex,
+    },
+    { _id: 1 },
+  ).lean();
+
+  return uniqueStringIds(matched.map((item) => item._id));
+}
+
 /**
  * GET /api/game-history/report-downline
  *
@@ -24,6 +120,8 @@ const router = express.Router();
  * toDate=2026-03-11
  * toTime=23:59:59
  * timezone=Asia/Dhaka
+ * currentAdminId=...
+ * currentAdminRole=MA
  */
 router.get("/report-downline", async (req, res) => {
   try {
@@ -38,20 +136,170 @@ router.get("/report-downline", async (req, res) => {
       toDate = "",
       toTime = "23:59:59",
       timezone: tz = "Asia/Dhaka",
+      currentAdminId = "",
+      currentAdminRole = "",
     } = req.query;
+
+    if (!currentAdminId || !mongoose.Types.ObjectId.isValid(currentAdminId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid currentAdminId is required",
+      });
+    }
+
+    if (!currentAdminRole || !ALLOWED_VIEW_ROLES.has(currentAdminRole)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid currentAdminRole is required",
+      });
+    }
+
+    const currentAdmin = await Admin.findById(currentAdminId).lean();
+
+    if (!currentAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: "Logged in admin not found",
+      });
+    }
 
     const currentPage = Math.max(parseInt(page, 10) || 1, 1);
     const perPage = Math.max(parseInt(limit, 10) || 40, 1);
     const skip = (currentPage - 1) * perPage;
 
-    const matchStage = {};
+    // 1) Logged in admin এর পুরো scope বের করো
+    const scopedTreeIds = await getAllowedTreeIds(currentAdminId);
 
-    // ✅ Date range filter
+    if (!scopedTreeIds.length) {
+      return res.json({
+        success: true,
+        filters: {
+          page: currentPage,
+          limit: perPage,
+          search,
+          betType,
+          status,
+          fromDate,
+          fromTime,
+          toDate,
+          toTime,
+          timezone: tz,
+          currentAdminId,
+          currentAdminRole,
+        },
+        pagination: {
+          page: currentPage,
+          limit: perPage,
+          totalRecords: 0,
+          totalPages: 1,
+          hasPrev: false,
+          hasNext: false,
+        },
+        totals: {
+          totalRecords: 0,
+          totalAmount: 0,
+          totalBetAmount: 0,
+          totalSettleAmount: 0,
+          totalCancelAmount: 0,
+          totalRefundAmount: 0,
+          wonAmount: 0,
+          lostAmount: 0,
+          cancelledAmount: 0,
+          refundedAmount: 0,
+          netPL: 0,
+        },
+        data: [],
+      });
+    }
+
+    // 2) এই scope এর নিচে শুধু user role যারা আছে তাদের নাও
+    let effectiveUserIds = await getUserIdsFromTree(scopedTreeIds);
+
+    // 3) Search যদি কোনো admin/user username এর সাথে match করে
+    // তাহলে ওই admin/user এর নিচের সব user দেখাও
+    let historySearchMatch = {};
+
+    if (search?.trim()) {
+      const matchedAdminIds = await getMatchedAdminIdsWithinScope(
+        search,
+        scopedTreeIds,
+      );
+
+      if (matchedAdminIds.length > 0) {
+        const matchedSubtreeIds =
+          await getSelfAndDescendantIds(matchedAdminIds);
+        effectiveUserIds = await getUserIdsFromTree(matchedSubtreeIds);
+      } else {
+        const regex = new RegExp(search.trim(), "i");
+        historySearchMatch = {
+          $or: [
+            { "gameHistory.username": regex },
+            { "gameHistory.game_code": regex },
+            { "gameHistory.provider_code": regex },
+            { "gameHistory.transaction_id": regex },
+            { username: regex }, // direct user username
+          ],
+        };
+      }
+    }
+
+    if (!effectiveUserIds.length) {
+      return res.json({
+        success: true,
+        filters: {
+          page: currentPage,
+          limit: perPage,
+          search,
+          betType,
+          status,
+          fromDate,
+          fromTime,
+          toDate,
+          toTime,
+          timezone: tz,
+          currentAdminId,
+          currentAdminRole,
+        },
+        pagination: {
+          page: currentPage,
+          limit: perPage,
+          totalRecords: 0,
+          totalPages: 1,
+          hasPrev: false,
+          hasNext: false,
+        },
+        totals: {
+          totalRecords: 0,
+          totalAmount: 0,
+          totalBetAmount: 0,
+          totalSettleAmount: 0,
+          totalCancelAmount: 0,
+          totalRefundAmount: 0,
+          wonAmount: 0,
+          lostAmount: 0,
+          cancelledAmount: 0,
+          refundedAmount: 0,
+          netPL: 0,
+        },
+        data: [],
+      });
+    }
+
+    const matchStage = {
+      _id: { $in: effectiveUserIds.map((id) => toObjectId(id)) },
+      role: ROLE.US,
+    };
+
+    // Date range filter
     if (fromDate && toDate) {
       const fromLocal = `${fromDate} ${fromTime || "00:00:00"}`;
       const toLocal = `${toDate} ${toTime || "23:59:59"}`;
 
-      const fromUtc = dayjs.tz(fromLocal, "YYYY-MM-DD HH:mm:ss", tz).utc().toDate();
+      const fromUtc = dayjs
+        .tz(fromLocal, "YYYY-MM-DD HH:mm:ss", tz)
+        .utc()
+        .toDate();
+
       const toUtc = dayjs.tz(toLocal, "YYYY-MM-DD HH:mm:ss", tz).utc().toDate();
 
       matchStage["gameHistory.createdAt"] = {
@@ -60,48 +308,32 @@ router.get("/report-downline", async (req, res) => {
       };
     }
 
-    // ✅ Bet type filter
     if (betType && betType !== "ALL") {
-      matchStage["gameHistory.bet_type"] = betType.toUpperCase();
+      matchStage["gameHistory.bet_type"] = String(betType).toUpperCase();
     }
 
-    // ✅ Status filter
     if (status && status !== "ALL") {
-      matchStage["gameHistory.status"] = status.toLowerCase();
-    }
-
-    // ✅ Search filter
-    let searchMatch = {};
-    if (search?.trim()) {
-      const regex = new RegExp(search.trim(), "i");
-      searchMatch = {
-        $or: [
-          { username: regex }, // parent admin username
-          { "gameHistory.username": regex },
-          { "gameHistory.game_code": regex },
-          { "gameHistory.provider_code": regex },
-          { "gameHistory.transaction_id": regex },
-        ],
-      };
+      matchStage["gameHistory.status"] = String(status).toLowerCase();
     }
 
     const basePipeline = [
+      {
+        $match: {
+          _id: { $in: effectiveUserIds.map((id) => toObjectId(id)) },
+          role: ROLE.US,
+        },
+      },
       { $unwind: "$gameHistory" },
       {
         $match: {
           ...matchStage,
-          ...searchMatch,
+          ...historySearchMatch,
         },
       },
     ];
 
-    // ✅ Total records count
-    const countPipeline = [
-      ...basePipeline,
-      { $count: "totalRecords" },
-    ];
+    const countPipeline = [...basePipeline, { $count: "totalRecords" }];
 
-    // ✅ Paginated data
     const dataPipeline = [
       ...basePipeline,
       {
@@ -112,6 +344,8 @@ router.get("/report-downline", async (req, res) => {
           firstName: "$firstName",
           lastName: "$lastName",
           phone: "$phone",
+          role: "$role",
+          createdBy: "$createdBy",
 
           gameHistoryId: "$gameHistory._id",
           username: "$gameHistory.username",
@@ -134,54 +368,85 @@ router.get("/report-downline", async (req, res) => {
       { $limit: perPage },
     ];
 
-    // ✅ Grand totals for all filtered data
     const totalsPipeline = [
       ...basePipeline,
       {
         $group: {
           _id: null,
           totalRecords: { $sum: 1 },
-          totalAmount: { $sum: "$gameHistory.amount" },
+          totalAmount: { $sum: { $ifNull: ["$gameHistory.amount", 0] } },
 
           totalBetAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.bet_type", "BET"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.bet_type", "BET"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
           totalSettleAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.bet_type", "SETTLE"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.bet_type", "SETTLE"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
           totalCancelAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.bet_type", "CANCEL"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.bet_type", "CANCEL"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
           totalRefundAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.bet_type", "REFUND"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.bet_type", "REFUND"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
 
           wonAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.status", "won"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.status", "won"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
           lostAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.status", "lost"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.status", "lost"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
           cancelledAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.status", "cancelled"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.status", "cancelled"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
           refundedAmount: {
             $sum: {
-              $cond: [{ $eq: ["$gameHistory.status", "refunded"] }, "$gameHistory.amount", 0],
+              $cond: [
+                { $eq: ["$gameHistory.status", "refunded"] },
+                { $ifNull: ["$gameHistory.amount", 0] },
+                0,
+              ],
             },
           },
         },
@@ -201,7 +466,13 @@ router.get("/report-downline", async (req, res) => {
           refundedAmount: 1,
           netPL: {
             $subtract: [
-              { $add: ["$totalSettleAmount", "$totalRefundAmount", "$totalCancelAmount"] },
+              {
+                $add: [
+                  "$totalSettleAmount",
+                  "$totalRefundAmount",
+                  "$totalCancelAmount",
+                ],
+              },
               "$totalBetAmount",
             ],
           },
@@ -217,6 +488,7 @@ router.get("/report-downline", async (req, res) => {
 
     const totalRecords = countResult[0]?.totalRecords || 0;
     const totalPages = Math.ceil(totalRecords / perPage) || 1;
+
     const totals = totalsResult[0] || {
       totalRecords: 0,
       totalAmount: 0,
@@ -231,7 +503,7 @@ router.get("/report-downline", async (req, res) => {
       netPL: 0,
     };
 
-    res.json({
+    return res.json({
       success: true,
       filters: {
         page: currentPage,
@@ -244,6 +516,8 @@ router.get("/report-downline", async (req, res) => {
         toDate,
         toTime,
         timezone: tz,
+        currentAdminId,
+        currentAdminRole,
       },
       pagination: {
         page: currentPage,
@@ -258,7 +532,7 @@ router.get("/report-downline", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ report-downline error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch game history report",
       error: error.message,

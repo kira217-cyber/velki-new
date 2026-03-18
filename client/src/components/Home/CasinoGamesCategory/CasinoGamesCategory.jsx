@@ -9,11 +9,11 @@ const CasinoGamesCategory = ({
   selectedProvider,
 }) => {
   const [visibleCount, setVisibleCount] = useState(9);
-  const [subFilter, setSubFilter] = useState("catalog");
+  const [subFilter, setSubFilter] = useState("a_z");
 
   useEffect(() => {
     setVisibleCount(9);
-    setSubFilter("catalog");
+    setSubFilter("a_z");
   }, [selectedMainCat, selectedProvider]);
 
   if (!selectedMainCat) {

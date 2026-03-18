@@ -157,120 +157,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// router.post("/playgame", async (req, res) => {
-//   try {
-//     const { gameID, username, money } = req.body;
 
-//     const sanitizedMoney = Number.isFinite(Number(money))
-//       ? Math.round(Number(money))
-//       : 0; // provider requires whole-number balance
-
-//     // Validation
-//     if (!gameID || !username || money === undefined) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "gameID, username and money are required",
-//       });
-//     }
-
-//     // Step 1: Oracle থেকে গেমের ডাটা নাও (game_uuid দরকার)
-//     let gameData;
-//     try {
-//       const oracleRes = await axios.get(
-//         `https://apigames.oracleapi.net/api/games/${gameID}`,
-//         {
-//           headers: {
-//             "x-api-key": "b4fb7adb955b1078d8d38b54f5ad7be8ded17cfba85c37e4faa729ddd679d379",
-//           },
-//         }
-//       );
-//       gameData = oracleRes.data.data || [];
-
-//       console.log("gameData ",gameData.game_uuid);
-      
-
-//     } catch (err) {
-//       console.error("Oracle API Error:", err.response?.data || err.message);
-//       return res.status(404).json({
-//         success: false,
-//         message: "Game not found or invalid gameID",
-//       });
-//     }
-
-//     // game_uuid না থাকলে এরর
-//     if (!gameData.game_uuid) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "game_uuid not found for this game",
-//       });
-//     }
-
-//     // Step 2: crazybet99 এর API তে পোস্ট করো api.velki.oracelsoft.com
-//     const postData = {
-//       home_url: "https://velki360.com",
-//       token: "5a559cc11093333dd5986df2498c6aea",
-//       //    home_url: "https://cp666.live",
-//       // token: "e9a26dd9196e51bb18a44016a9ca1d73",
-//       username: username + "45", // চাইলে random করো
-//       money: sanitizedMoney,
-//       gameid:gameData.game_uuid, // এখানে game_uuid পাঠানো হচ্ছে
-//       // gameid:"691ff8d38f31e", // এখানে game_uuid পাঠানো হচ্ছে
-//     };
-//     // const postData = {
-//     //   home_url: "https://velki.oracelsoft.com",
-//     //   token: "19ac2520cfee68817d1f7e928b7b79e0",
-//     //   username: username + "45", // চাইলে random করো
-//     //   money: money,
-//     //   gameid:gameData.game_uuid, // এখানে game_uuid পাঠানো হচ্ছে
-//     // };
-//     // const postData = {
-//     //   home_url: "https://cp666.live",
-//     //   token: "e9a26dd9196e51bb18a44016a9ca1d73",
-//     //   username: username + "45", // চাইলে random করো
-//     //   money: money,
-//     //   gameUid: gameData.game_uuid, // এখানে game_uuid পাঠানো হচ্ছে
-//     // };
-
-//     console.log("Launching game with:", postData);
-
-//       const response = await axios.post(
-//       "https://crazybet99.com/getgameurl",
-//       qs.stringify(postData),
-//       {
-//         headers: {
-//           "Content-Type": "application/x-www-form-urlencoded",
-//           "x-dstgame-key": postData.token,
-//         },
-//         timeout: 15000,
-//       }
-//     );
-
-//     const gameUrl = response.data.url || response.data.game_url || response.data;
-
-//     if (!gameUrl) {
-//       return res.status(500).json({
-//         success: false,
-//         message: "Game URL not received from provider",
-//         providerResponse: response.data,
-//       });
-//     }
-
-//     // সাকসেস — গেম URL পাঠাও
-//     return res.json({
-//       success: true,
-//       gameUrl: gameUrl,
-//       gameName: gameData.name,
-//       provider: gameData.provider?.name || "Unknown",
-//     });
-//   } catch (error) {
-//     console.error("PlayGame API Error:", error.response?.data || error.message);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Failed to launch game 2",
-//       error: error.response?.data || error.message,
-//     });
-//   }
-// });
 
 router.post("/playgame", async (req, res) => {
   try {
@@ -344,9 +231,8 @@ router.post("/playgame", async (req, res) => {
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "x-dstgame-key": process.env.DST_GAME_KEY,
+          "x-dstgame-key": "bb10373906ea00faa6717f10f8049c61",
         },
-        timeout: 15000,
       }
     );
 
@@ -385,6 +271,8 @@ router.post("/playgame", async (req, res) => {
     });
   }
 });
+
+
 
 
 router.post("/playgame-direct-gameuuid", async (req, res) => {

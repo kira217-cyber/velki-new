@@ -6,7 +6,7 @@ import { BsFire } from "react-icons/bs";
 import { TbSortAZ } from "react-icons/tb";
 
 const GamesCategory = ({ selectedGames = [] }) => {
-  const [selectedFilter, setSelectedFilter] = useState("catalog");
+  const [selectedFilter, setSelectedFilter] = useState("a-z");
   const [visibleCount, setVisibleCount] = useState(18);
 
   // ফিল্টার + সর্ট

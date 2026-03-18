@@ -1,5 +1,6 @@
 import axios from "axios";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { AuthContext } from "../../context/AuthContext";
 
 const PAGE_SIZE = 40;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -114,6 +115,12 @@ const StatBadge = ({ label, value, color = "gray" }) => {
 
 const ProfitLossReportByDownLine = () => {
   const [lastTxn, setLastTxn] = useState("40 Txn");
+  const { motherAdmin } = useContext(AuthContext);
+
+  const currentAdminId = motherAdmin?._id || "";
+  const currentAdminRole = motherAdmin?.role || "";
+
+  console.log("Admin Id and Role", currentAdminId, currentAdminRole);
 
   // applied filters
   const [search, setSearch] = useState("");
@@ -168,6 +175,8 @@ const ProfitLossReportByDownLine = () => {
 
   const fetchReport = async (customPage = page, customFilters = {}) => {
     try {
+      if (!currentAdminId || !currentAdminRole) return;
+
       setLoading(true);
       setError("");
 
@@ -182,6 +191,8 @@ const ProfitLossReportByDownLine = () => {
         toDate,
         toTime,
         timezone: timezone === "All Timezones" ? "Asia/Dhaka" : timezone,
+        currentAdminId,
+        currentAdminRole,
         ...customFilters,
       };
 
@@ -241,6 +252,8 @@ const ProfitLossReportByDownLine = () => {
   };
 
   useEffect(() => {
+    if (!currentAdminId || !currentAdminRole) return;
+
     fetchReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -254,6 +267,8 @@ const ProfitLossReportByDownLine = () => {
     toDate,
     toTime,
     timezone,
+    currentAdminId,
+    currentAdminRole,
   ]);
 
   const applyFilters = () => {
@@ -320,38 +335,6 @@ const ProfitLossReportByDownLine = () => {
     setToTimeInput(t.toTime);
   };
 
-  const pageTotals = useMemo(() => {
-    return rows.reduce(
-      (acc, item) => {
-        const amount = Number(item.amount || 0);
-        acc.totalAmount += amount;
-
-        if (item.bet_type === "BET") acc.totalBetAmount += amount;
-        if (item.bet_type === "SETTLE") acc.totalSettleAmount += amount;
-        if (item.bet_type === "CANCEL") acc.totalCancelAmount += amount;
-        if (item.bet_type === "REFUND") acc.totalRefundAmount += amount;
-
-        if (item.status === "won") acc.wonAmount += amount;
-        if (item.status === "lost") acc.lostAmount += amount;
-        if (item.status === "cancelled") acc.cancelledAmount += amount;
-        if (item.status === "refunded") acc.refundedAmount += amount;
-
-        return acc;
-      },
-      {
-        totalAmount: 0,
-        totalBetAmount: 0,
-        totalSettleAmount: 0,
-        totalCancelAmount: 0,
-        totalRefundAmount: 0,
-        wonAmount: 0,
-        lostAmount: 0,
-        cancelledAmount: 0,
-        refundedAmount: 0,
-      },
-    );
-  }, [rows]);
-
   const currentFilterText = useMemo(() => {
     const parts = [];
     if (search) parts.push(`Search: ${search}`);
@@ -365,8 +348,19 @@ const ProfitLossReportByDownLine = () => {
       parts.push("Date: All Time");
     }
     parts.push(`Timezone: ${timezone}`);
+    parts.push(`Role: ${currentAdminRole || "-"}`);
     return parts.join(" | ");
-  }, [search, betType, status, fromDate, fromTime, toDate, toTime, timezone]);
+  }, [
+    search,
+    betType,
+    status,
+    fromDate,
+    fromTime,
+    toDate,
+    toTime,
+    timezone,
+    currentAdminRole,
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-3 sm:p-4 lg:p-6">
@@ -398,7 +392,7 @@ const ProfitLossReportByDownLine = () => {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && applyFilters()}
-                placeholder="Search username / game code / provider code / transaction id"
+                placeholder="Search admin/user username / game code / provider code / transaction id"
                 className="w-full min-w-0 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 sm:w-[320px] md:w-[360px]"
               />
 
@@ -672,7 +666,10 @@ const ProfitLossReportByDownLine = () => {
                           {item.username || "-"}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Admin: {item.adminUsername || "-"}
+                          User Doc Username: {item.adminUsername || "-"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {formatDateTime(item.createdAt, timezone)}
                         </div>
                       </div>
 
@@ -691,21 +688,7 @@ const ProfitLossReportByDownLine = () => {
                       </div>
                     </div>
 
-                    {/* <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-md bg-gray-50 p-2">
-                        <div className="text-xs text-gray-500">Date Time</div>
-                        <div className="font-medium text-gray-700">
-                          {formatDateTime(item.createdAt, timezone)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-md bg-gray-50 p-2">
-                        <div className="text-xs text-gray-500">Amount</div>
-                        <div className="font-medium text-gray-700">
-                          {formatNumber(item.amount)}
-                        </div>
-                      </div>
-
+                    <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="rounded-md bg-gray-50 p-2">
                         <div className="text-xs text-gray-500">Provider</div>
                         <div className="font-medium text-gray-700">
@@ -727,7 +710,14 @@ const ProfitLossReportByDownLine = () => {
                         </div>
                       </div>
 
-                      <div className="rounded-md bg-gray-50 p-2 break-all">
+                      <div className="rounded-md bg-gray-50 p-2">
+                        <div className="text-xs text-gray-500">Amount</div>
+                        <div className="font-medium text-gray-700">
+                          {formatNumber(item.amount)}
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 rounded-md bg-gray-50 p-2 break-all">
                         <div className="text-xs text-gray-500">
                           Transaction ID
                         </div>
@@ -735,82 +725,26 @@ const ProfitLossReportByDownLine = () => {
                           {item.transaction_id || "-"}
                         </div>
                       </div>
-
-                      <div className="rounded-md bg-gray-50 p-2 break-all">
-                        <div className="text-xs text-gray-500">Round ID</div>
-                        <div className="font-medium text-gray-700">
-                          {item.round_id || "-"}
-                        </div>
-                      </div>
-
-                      <div className="rounded-md bg-gray-50 p-2 break-all">
-                        <div className="text-xs text-gray-500">
-                          Verification Key
-                        </div>
-                        <div className="font-medium text-gray-700">
-                          {item.verification_key || "-"}
-                        </div>
-                      </div>
-                    </div> */}
+                    </div>
                   </div>
                 ))}
-
-                {/* <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                  <div className="mb-2 text-sm font-bold text-yellow-800">
-                    Current Page Total
-                  </div>
-                  <div className="space-y-1 text-sm text-yellow-900">
-                    <div>
-                      Total Amount: {formatNumber(pageTotals.totalAmount)}
-                    </div>
-                    <div>BET: {formatNumber(pageTotals.totalBetAmount)}</div>
-                    <div>
-                      SETTLE: {formatNumber(pageTotals.totalSettleAmount)}
-                    </div>
-                    <div>
-                      CANCEL: {formatNumber(pageTotals.totalCancelAmount)}
-                    </div>
-                    <div>
-                      REFUND: {formatNumber(pageTotals.totalRefundAmount)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                  <div className="mb-2 text-sm font-bold text-green-800">
-                    Grand Total
-                  </div>
-                  <div className="grid grid-cols-1 gap-1 text-sm text-green-900">
-                    <div>Records: {totals.totalRecords || 0}</div>
-                    <div>Total Amount: {formatNumber(totals.totalAmount)}</div>
-                    <div>Won: {formatNumber(totals.wonAmount)}</div>
-                    <div>Lost: {formatNumber(totals.lostAmount)}</div>
-                    <div>BET: {formatNumber(totals.totalBetAmount)}</div>
-                    <div>SETTLE: {formatNumber(totals.totalSettleAmount)}</div>
-                    <div>CANCEL: {formatNumber(totals.totalCancelAmount)}</div>
-                    <div>REFUND: {formatNumber(totals.totalRefundAmount)}</div>
-                    <div>Net P/L: {formatNumber(totals.netPL)}</div>
-                  </div>
-                </div> */}
               </div>
 
               {/* Desktop table */}
               <div className="hidden overflow-auto rounded-lg border border-gray-200 lg:block">
-                <table className="min-w-[1080px] w-full border-collapse text-left text-sm">
+                <table className="min-w-[1180px] w-full border-collapse text-left text-sm">
                   <thead className="bg-gray-100 text-gray-700">
                     <tr>
                       <th className="border px-3 py-2">#</th>
-                      {/* <th className="border px-3 py-2">Date Time</th> */}
-                      {/* <th className="border px-3 py-2">Admin Username</th> */}
+                      <th className="border px-3 py-2">Date Time</th>
                       <th className="border px-3 py-2">Game Username</th>
+                      <th className="border px-3 py-2">User Doc Username</th>
                       <th className="border px-3 py-2">Provider Code</th>
                       <th className="border px-3 py-2">Game Code</th>
                       <th className="border px-3 py-2">Bet Type</th>
                       <th className="border px-3 py-2">Status</th>
                       <th className="border px-3 py-2 text-right">Amount</th>
                       <th className="border px-3 py-2">Transaction ID</th>
-                      {/* <th className="border px-3 py-2">Round ID</th> */}
-                      {/* <th className="border px-3 py-2">Verification Key</th> */}
                     </tr>
                   </thead>
 
@@ -823,14 +757,14 @@ const ProfitLossReportByDownLine = () => {
                         <td className="border px-3 py-2">
                           {(pagination.page - 1) * pagination.limit + index + 1}
                         </td>
-                        {/* <td className="border px-3 py-2 whitespace-nowrap">
+                        <td className="border px-3 py-2 whitespace-nowrap">
                           {formatDateTime(item.createdAt, timezone)}
-                        </td> */}
-                        {/* <td className="border px-3 py-2">
-                          {item.adminUsername || "-"}
-                        </td> */}
+                        </td>
                         <td className="border px-3 py-2">
                           {item.username || "-"}
+                        </td>
+                        <td className="border px-3 py-2">
+                          {item.adminUsername || "-"}
                         </td>
                         <td className="border px-3 py-2">
                           {item.provider_code || "-"}
@@ -862,29 +796,8 @@ const ProfitLossReportByDownLine = () => {
                         <td className="border px-3 py-2">
                           {item.transaction_id || "-"}
                         </td>
-                        {/* <td className="border px-3 py-2">
-                          {item.round_id || "-"}
-                        </td> */}
-                        {/* <td className="border px-3 py-2">
-                          {item.verification_key || "-"}
-                        </td> */}
                       </tr>
                     ))}
-
-                    {/* <tr className="bg-yellow-50 font-semibold">
-                      <td className="border px-3 py-2" colSpan="8">
-                        Current Page Total
-                      </td>
-                      <td className="border px-3 py-2 text-right">
-                        {formatNumber(pageTotals.totalAmount)}
-                      </td>
-                      <td className="border px-3 py-2" colSpan="3">
-                        BET: {formatNumber(pageTotals.totalBetAmount)} | SETTLE:{" "}
-                        {formatNumber(pageTotals.totalSettleAmount)} | CANCEL:{" "}
-                        {formatNumber(pageTotals.totalCancelAmount)} | REFUND:{" "}
-                        {formatNumber(pageTotals.totalRefundAmount)}
-                      </td>
-                    </tr> */}
 
                     <tr className="bg-green-50 font-bold">
                       <td className="border px-3 py-2" colSpan="2">
@@ -899,16 +812,9 @@ const ProfitLossReportByDownLine = () => {
                       <td className="border px-3 py-2" colSpan="2">
                         Lost: {formatNumber(totals.lostAmount)}
                       </td>
-                      {/* <td className="border px-3 py-2 text-right">
-                        {formatNumber(totals.totalAmount)}
-                      </td> */}
-                      {/* <td className="border px-3 py-2" colSpan="3">
-                        BET: {formatNumber(totals.totalBetAmount)} | SETTLE:{" "}
-                        {formatNumber(totals.totalSettleAmount)} | CANCEL:{" "}
-                        {formatNumber(totals.totalCancelAmount)} | REFUND:{" "}
-                        {formatNumber(totals.totalRefundAmount)} | Net P/L:{" "}
-                        {formatNumber(totals.netPL)}
-                      </td> */}
+                      <td className="border px-3 py-2" colSpan="2">
+                        Net P/L: {formatNumber(totals.netPL)}
+                      </td>
                     </tr>
                   </tbody>
                 </table>

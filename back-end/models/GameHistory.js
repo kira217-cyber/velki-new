@@ -27,7 +27,7 @@ const gameHistory = new mongoose.Schema(
     },
     amount: {
       type: Number,
-      required: true,
+        default: "",
       min: 0,
     },
 
