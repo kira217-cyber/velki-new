@@ -65,7 +65,9 @@ const Navbar = () => {
         setTextColor(data.textColor || "#000000");
         setFontSize(data.fontSize || 16);
         setShowSignupButton(
-          typeof data.showSignupButton === "boolean" ? data.showSignupButton : true
+          typeof data.showSignupButton === "boolean"
+            ? data.showSignupButton
+            : true,
         );
         setSignupLink(data.signupLink || "");
       })
@@ -76,7 +78,7 @@ const Navbar = () => {
   }, []);
 
   const navbarColorControl = colorControls?.find(
-    (colorControl) => colorControl.section === "home-navbar"
+    (colorControl) => colorControl.section === "home-navbar",
   );
 
   const toggleSidebar = () => {
@@ -146,7 +148,7 @@ const Navbar = () => {
               <div className="flex flex-col items-start">
                 <p>@{user?.username}</p>
                 <div className="flex flex-row items-center gap-1 text-sm">
-                  <p>PBU {balance || "0.00"}</p>
+                  <p>PBU {Number(balance || 0).toFixed(2)}</p>
                   <p className="text-red-500">
                     <span className="font-semibold text-black">
                       Exp ({(balance * 100).toFixed(0)})

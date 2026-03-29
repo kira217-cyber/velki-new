@@ -4,6 +4,7 @@ import { FaChevronDown, FaMicrophone } from "react-icons/fa";
 import { TfiReload } from "react-icons/tfi";
 import { TbLogout } from "react-icons/tb";
 import { AuthContext } from "../../context/AuthContext";
+import logo from "../../assets/logo.png";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -76,6 +77,15 @@ const Sidebar = () => {
   } else if (motherAdmin?.role === "US") {
     downlineDropdown = [{ name: "User", path: `/${"us"}/users` }];
   }
+
+  const roleLabel = {
+    MA: "Mother Admin",
+    SA: "Sub Admin",
+    MT: "Master",
+    AG: "Agent",
+    SG: "Sub Agent",
+    US: "User",
+  };
 
   // Full navItems with conditional Downline
   const navItems = [
@@ -190,12 +200,12 @@ const Sidebar = () => {
     const allNavItems = navItems.flatMap((item) =>
       item.dropdown
         ? item.dropdown.map((drop) => ({ name: drop.name, path: drop.path }))
-        : [{ name: item.name, path: item.path }]
+        : [{ name: item.name, path: item.path }],
     );
 
     // Find the nav item whose path matches or is a prefix of the current path
     const activeItem = allNavItems.find((item) =>
-      currentPath.startsWith(item.path)
+      currentPath.startsWith(item.path),
     );
 
     return activeItem ? activeItem.name : "Downline List"; // Fallback to "Downline List"
@@ -206,9 +216,8 @@ const Sidebar = () => {
       {/* Sidebar */}
       <aside className="bg-black w-72 text-white fixed h-full transition-all duration-300 overflow-y-auto">
         <div className="flex justify-between items-center p-4 border-gray-700">
-          <h1 className="text-xl font-bold text-yellow-500">Velki</h1>
+          <img className="w-full h-14" src={logo} alt="Logo" />
         </div>
-
         <nav className="mt-1">
           {navItems.map((item, index) =>
             item.dropdown ? (
@@ -270,13 +279,15 @@ const Sidebar = () => {
                           to={drop.path}
                           className={({ isActive }) =>
                             `block px-6 py-2 ${
-                              isActive ? "bg-yellow-500 text-black font-bold" : "hover:bg-gray-700"
+                              isActive
+                                ? "bg-yellow-500 text-black font-bold"
+                                : "hover:bg-gray-700"
                             }`
                           }
                         >
                           {drop.name}
                         </NavLink>
-                      )
+                      ),
                     )}
                   </div>
                 )}
@@ -287,22 +298,24 @@ const Sidebar = () => {
                 to={item.path}
                 className={({ isActive }) =>
                   `block px-4 py-3 border-b border-gray-700 text-[12px] ${
-                    isActive ? "bg-yellow-500 text-black font-bold" : "hover:bg-gray-700"
+                    isActive
+                      ? "bg-yellow-500 text-black font-bold"
+                      : "hover:bg-gray-700"
                   }`
                 }
               >
                 {item.name}
               </NavLink>
-            )
+            ),
           )}
         </nav>
 
-        <button
+        {/* <button
           onClick={() => logout()}
           className="w-full text-left px-4 py-4 text-[12px] cursor-pointer hover:bg-yellow-500 hover:text-black hover:font-bold flex items-center gap-4"
         >
           Logout <TbLogout size={18} />
-        </button>
+        </button> */}
       </aside>
 
       {/* Main Section */}
@@ -319,9 +332,9 @@ const Sidebar = () => {
           <div className="px-4 py-1 rounded text-sm flex items-center gap-2">
             <div className="flex items-center justify-center gap-2">
               <span className="text-yellow-400 py-1 px-2 bg-gray-700 text-[12px] font-bold">
-                WL
+                {roleLabel[motherAdmin?.role] || "Unknown"}
               </span>
-              <span className="">{motherAdmin?.username} [P]</span>
+              <span className="">{motherAdmin?.username}</span>
             </div>
             <div className="flex items-center justify-center gap-2">
               <span className="font-bold py-1 px-2 bg-gray-700 text-[12px]">
@@ -336,6 +349,17 @@ const Sidebar = () => {
             >
               <span className="font-bold py-2 px-4 bg-gray-700 text-[12px]">
                 <TfiReload size={20} />
+              </span>
+            </button>
+            <button
+              onClick={reload}
+              className="flex items-center justify-center gap-2 hover:cursor-pointer"
+            >
+              <span
+                onClick={() => logout()}
+                className="font-bold flex gap-2 py-2 px-4 bg-gray-700 text-[12px] hover:bg-yellow-500"
+              >
+                Logout <TbLogout size={22} />
               </span>
             </button>
           </div>

@@ -10,14 +10,12 @@ const DemoGame = () => {
   const [gameUrl, setGameUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [games,setGames] = useState(null)
+  const [games, setGames] = useState(null);
   const [callFetch, setCallFetch] = useState(true);
 
-  console.log(games)
+  console.log(games);
 
-
-
-   // Fetch Providers & Categories
+  // Fetch Providers & Categories
   useEffect(() => {
     const fetchGame = async () => {
       try {
@@ -28,7 +26,7 @@ const DemoGame = () => {
               "x-api-key":
                 "b4fb7adb955b1078d8d38b54f5ad7be8ded17cfba85c37e4faa729ddd679d379",
             },
-          }
+          },
         );
         setGames(res.data.data || []);
       } catch (err) {
@@ -37,7 +35,6 @@ const DemoGame = () => {
     };
     fetchGame();
   }, []);
-  
 
   useEffect(() => {
     const launchGame = async () => {
@@ -58,14 +55,13 @@ const DemoGame = () => {
             gameID: id,
             username: user.username,
             money: balance ? Math.round(balance * 100) : 0,
-          }
+          },
         );
 
         if (response.data.success && response.data.gameUrl) {
           setGameUrl(response.data.gameUrl);
 
           setCallFetch(false);
-
         } else {
           setError(response.data.message || "Game URL not received");
         }
@@ -84,8 +80,17 @@ const DemoGame = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black text-white">
-        <div className="text-4xl font-bold animate-pulse">Launching Game</div>
-        <div className="mt-4 text-xl">Please wait...</div>
+        {/* Spinner */}
+        <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+
+        {/* Text */}
+        <div className="mt-6 text-2xl font-semibold animate-pulse">
+          Launching Game...
+        </div>
+
+        <div className="mt-2 text-sm text-gray-400">
+          Please wait while we prepare your game
+        </div>
       </div>
     );
   }
