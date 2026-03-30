@@ -14,18 +14,34 @@ import { TfiReload } from "react-icons/tfi";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import MotherAdminDashboard from "../../Components/Dashboard/MotherAdminDashboard";
 
 const MotherAdmin = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Add Mother Admin Modal
+  const [editModalOpen, setEditModalOpen] = useState(false); // Edit Username & Password Modal
   const [admins, setAdmins] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const adminsPerPage = 15;
+  const adminsPerPage = 20; // Changed to 20 as requested
+
   const [selectedAdminId, setSelectedAdminId] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+
   const [statusForm, setStatusForm] = useState({
     adminId: "",
     status: "Active",
     password: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    adminId: "",
+    username: "",
+    newPassword: "",
+    confirmPassword: "",
+    currentPassword: "", // For verification (motherAdmin's password)
   });
 
   const { motherAdmin } = useContext(AuthContext);
@@ -52,6 +68,10 @@ const MotherAdmin = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleEditChange = (e) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
   const fetchAdmins = async () => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admins`);
@@ -66,6 +86,7 @@ const MotherAdmin = () => {
     fetchAdmins();
   }, []);
 
+  // Add Mother Admin
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -75,10 +96,10 @@ const MotherAdmin = () => {
           ...formData,
           role: "MA",
           createdBy: motherAdmin?._id || null,
-        }
+        },
       );
       if (res.data.success) {
-        toast.success("✅ Admin added successfully!");
+        toast.success("✅ Mother Admin added successfully!");
         setIsModalOpen(false);
         setFormData({
           username: "",
@@ -92,10 +113,11 @@ const MotherAdmin = () => {
       }
     } catch (error) {
       console.error("Error adding admin:", error);
-      toast.error("❌ Failed to add admin");
+      toast.error(error.response?.data?.message || "❌ Failed to add admin");
     }
   };
 
+  // Pagination
   const indexOfLastAdmin = currentPage * adminsPerPage;
   const indexOfFirstAdmin = indexOfLastAdmin - adminsPerPage;
   const currentAdmins = admins.slice(indexOfFirstAdmin, indexOfLastAdmin);
@@ -104,10 +126,12 @@ const MotherAdmin = () => {
   const nextPage = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
+
   const prevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
+  // Calculate Totals for Current Page
   const totals = currentAdmins.reduce(
     (acc, u) => {
       acc.credit += u.credit || 0;
@@ -127,7 +151,7 @@ const MotherAdmin = () => {
       totalBal: 0,
       playerBal: 0,
       refPL: 0,
-    }
+    },
   );
 
   const menuItems = [
@@ -138,6 +162,7 @@ const MotherAdmin = () => {
     { icon: <FaLock />, label: "Block Market" },
   ];
 
+  // Status Change Handlers
   const handleStatusChange = (e) => {
     setStatusForm({ ...statusForm, [e.target.name]: e.target.value });
   };
@@ -153,21 +178,65 @@ const MotherAdmin = () => {
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/admins/change-status`,
-        statusForm
+        statusForm,
       );
       if (res.data.success) {
         toast.success("✅ Status changed successfully!");
         setStatusModalOpen(false);
-        fetchAdmins(); // Refresh the admin list
+        fetchAdmins();
       }
     } catch (error) {
-      console.error("Error changing status:", error);
-      toast.error("❌ Failed to change status");
+      toast.error(
+        error.response?.data?.message || "❌ Failed to change status",
+      );
+    }
+  };
+
+  // Edit Modal Handlers
+  const openEditModal = (admin) => {
+    setEditForm({
+      adminId: admin._id,
+      username: admin.username,
+      newPassword: "",
+      confirmPassword: "",
+      currentPassword: "",
+    });
+    setEditModalOpen(true);
+  };
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+
+    if (
+      editForm.newPassword &&
+      editForm.newPassword !== editForm.confirmPassword
+    ) {
+      return toast.error("❌ New passwords do not match");
+    }
+
+    try {
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/admins/${editForm.adminId}/update`,
+        {
+          username: editForm.username,
+          newPassword: editForm.newPassword || undefined,
+          currentPassword: editForm.currentPassword,
+        },
+      );
+
+      if (res.data.success) {
+        toast.success("✅ Mother Admin updated successfully!");
+        setEditModalOpen(false);
+        fetchAdmins();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "❌ Failed to update admin");
     }
   };
 
   return (
     <div className="p-4 bg-gray-100 min-h-screen">
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <input
@@ -190,7 +259,7 @@ const MotherAdmin = () => {
             onClick={() => setIsModalOpen(true)}
           >
             <IoMdAdd />
-            <span>Add Admin</span>
+            <span>Add Mother Admin</span>
           </button>
           <button
             onClick={fetchAdmins}
@@ -201,14 +270,18 @@ const MotherAdmin = () => {
         </div>
       </div>
 
-      <div className="flex bg-[#f5f6f8] border-b mb-5 overflow-hidden">
+      {/* Summary Cards */}
+      <MotherAdminDashboard />
+      {/* <div className="flex bg-[#f5f6f8] border-b mb-5 overflow-hidden">
         <div className="flex-1 px-4 py-3 border-r">
           <p className="text-gray-600 text-sm">Total Balance</p>
           <h2 className="font-extrabold text-lg text-black">PBU 00.00</h2>
         </div>
         <div className="flex-1 px-4 py-3 border-r">
           <p className="text-gray-600 text-sm">Net Exposure</p>
-          <h2 className="font-extrabold text-lg text-yellow-600">PBU (00.00)</h2>
+          <h2 className="font-extrabold text-lg text-yellow-600">
+            PBU (00.00)
+          </h2>
         </div>
         <div className="flex-1 px-4 py-3 border-r">
           <p className="text-gray-600 text-sm">Balance</p>
@@ -220,10 +293,13 @@ const MotherAdmin = () => {
         </div>
         <div className="flex-1 px-4 py-3">
           <p className="text-gray-600 text-sm">Transferable P/L with Upline</p>
-          <h2 className="font-extrabold text-lg text-yellow-600">PBU (00.00)</h2>
+          <h2 className="font-extrabold text-lg text-yellow-600">
+            PBU (00.00)
+          </h2>
         </div>
-      </div>
+      </div> */}
 
+      {/* Main Table */}
       <div className="bg-white rounded shadow overflow-hidden">
         <table className="w-full border-collapse">
           <thead className="bg-[#1f3349] text-white">
@@ -280,9 +356,7 @@ const MotherAdmin = () => {
                   <span
                     onClick={() =>
                       navigate(
-                        `/${motherAdmin.role.toLowerCase()}/created-admins/${
-                          u._id
-                        }`
+                        `/${motherAdmin.role.toLowerCase()}/created-admins/${u._id}`,
                       )
                     }
                     className="bg-blue-200 font-bold text-blue-800 text-xs px-2 py-1 rounded-[4px] cursor-pointer hover:bg-blue-300 transition"
@@ -290,7 +364,7 @@ const MotherAdmin = () => {
                     {u.role}
                   </span>
                   <span className="text-blue-600 font-bold underline cursor-pointer hover:no-underline">
-                      {u.username}
+                    {u.username}
                   </span>
                 </td>
                 <td className="p-2 text-right">{u.credit?.toLocaleString()}</td>
@@ -318,10 +392,10 @@ const MotherAdmin = () => {
                       u.status === "Active"
                         ? "bg-green-100 text-green-700"
                         : u.status === "Suspend"
-                        ? "bg-red-100 text-red-700"
-                        : u.status === "Locked"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-100 text-gray-700" // default fallback
+                          ? "bg-red-100 text-red-700"
+                          : u.status === "Locked"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-gray-100 text-gray-700"
                     }`}
                   >
                     ● {u.status}
@@ -330,21 +404,26 @@ const MotherAdmin = () => {
                 <td className="p-2 text-center">
                   <div className="flex justify-center space-x-2">
                     <button
-                      className="p-2 border rounded bg-yellow-50 hover:cursor-pointer"
+                      className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
                       onClick={() => openStatusModal(u._id)}
                     >
                       <FaCog size={16} />
                     </button>
-                    <button className="p-2 border rounded bg-yellow-50 hover:cursor-pointer">
+                    <button
+                      className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
+                      onClick={() => openEditModal(u)}
+                    >
                       <FaUser size={16} />
                     </button>
-                    <button className="p-2 border rounded bg-yellow-50 hover:cursor-pointer">
+                    <button className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer">
                       <FaLock size={16} />
                     </button>
                   </div>
                 </td>
               </tr>
             ))}
+
+            {/* Total Row for Current Page */}
             <tr className="bg-[#FFEDD5] border-t font-semibold">
               <td className="p-2">Total (Page {currentPage})</td>
               <td className="p-2 text-right">
@@ -374,6 +453,7 @@ const MotherAdmin = () => {
           </tbody>
         </table>
 
+        {/* Pagination Controls */}
         <div className="flex items-center justify-center p-3 border-t border-b border-dashed text-sm mt-4">
           <button
             onClick={prevPage}
@@ -394,6 +474,7 @@ const MotherAdmin = () => {
           </button>
         </div>
 
+        {/* Bottom Menu Items */}
         <div className="flex flex-wrap justify-end mr-8 items-center gap-3 py-2 bg-white border-t border-gray-300">
           {menuItems.map((item, index) => (
             <React.Fragment key={index}>
@@ -408,11 +489,12 @@ const MotherAdmin = () => {
         </div>
       </div>
 
+      {/* ====================== ADD MOTHER ADMIN MODAL ====================== */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
           <div className="bg-white shadow-lg w-1/2 rounded-2xl">
             <div className="bg-yellow-600 text-white p-2 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
-              <h3 className="text-lg font-bold">Add admin</h3>
+              <h3 className="text-lg font-bold">Add Mother Admin</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-white cursor-pointer hover:text-gray-200"
@@ -543,6 +625,144 @@ const MotherAdmin = () => {
         </div>
       )}
 
+      {/* ====================== EDIT MOTHER ADMIN MODAL ====================== */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white shadow-lg w-1/3 rounded-2xl">
+            <div className="bg-yellow-600 text-white p-3 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
+              <h3 className="text-lg font-bold">Edit Mother Admin</h3>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="text-white hover:text-gray-200 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitEdit} className="p-6 space-y-4">
+              {/* Username Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={editForm.username}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                />
+              </div>
+
+              {/* New Password Field with Toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password (leave blank if not changing)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    name="newPassword"
+                    value={editForm.newPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showNewPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm New Password Field with Toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={editForm.confirmPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Password Field with Toggle (Verification) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Current Password (Verification)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    name="currentPassword"
+                    value={editForm.currentPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showCurrentPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your (Mother Admin) password to authorize this change
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-5 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 transition"
+                >
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ====================== CHANGE STATUS MODAL ====================== */}
       {statusModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
           <div className="bg-white shadow-lg w-1/3 rounded-2xl">

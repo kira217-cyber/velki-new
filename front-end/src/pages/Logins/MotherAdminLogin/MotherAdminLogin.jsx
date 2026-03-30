@@ -40,6 +40,8 @@ const MotherAdminLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // ✅ Validation Code Check
     if (validationInput != code) {
       toast.error("Validation code mismatch!");
       return;
@@ -52,11 +54,32 @@ const MotherAdminLogin = () => {
       );
 
       const data = res.data;
+
       if (data?.user) {
+        // ✅ STATUS CHECK START
+        if (data.user.status === "Suspend") {
+          toast.error("❌ Your account is suspended!");
+          return;
+        }
+
+        if (data.user.status === "Locked") {
+          toast.error("🔒 Your account is locked!");
+          return;
+        }
+
+        if (data.user.status !== "Active") {
+          toast.error("⚠️ Invalid account status!");
+          return;
+        }
+        // ✅ STATUS CHECK END
+
+        // ✅ LOGIN SUCCESS
         login(data.user);
         toast.success("Login successful!");
-        if (data.user.role === "MA") navigate("/ma/mother-admin");
-        else {
+
+        if (data.user.role === "MA") {
+          navigate("/ma/mother-admin");
+        } else {
           toast.error("You do not have permission to access this page!");
           navigate("/restricted");
         }
@@ -92,7 +115,10 @@ const MotherAdminLogin = () => {
             <span className="text-gray-300 font-normal">Login</span>
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5 grid grid-cols-1">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 md:space-y-5 grid grid-cols-1"
+          >
             {/* Username */}
             <input
               type="text"

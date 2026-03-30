@@ -6,12 +6,7 @@ import { useSelector } from "react-redux";
 import UserTransactionHistory from "../UserTransactionHistory/UserTransactionHistory";
 
 const BalanceOverview = () => {
-  const { user,balance,loading } = useContext(AuthContext); // ⬅️ Using AuthContext instead of Redux
-
-
-
-
-
+  const { user, balance, loading } = useContext(AuthContext); // ⬅️ Using AuthContext instead of Redux
 
   if (loading) {
     return (
@@ -23,7 +18,6 @@ const BalanceOverview = () => {
       </div>
     );
   }
-
 
   return (
     <div className="mt-16">
@@ -37,13 +31,12 @@ const BalanceOverview = () => {
               PBU
             </p>
             <p className="text-2xl font-bold text-white leading-3">
-              {balance || "0.00"}
+              {Number(balance || 0).toFixed(2)}
             </p>
           </div>
         </div>
 
-    <UserTransactionHistory></UserTransactionHistory>
-      
+        {/* <UserTransactionHistory></UserTransactionHistory> */}
       </div>
     </div>
   );

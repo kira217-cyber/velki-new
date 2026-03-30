@@ -10,6 +10,8 @@ import {
   FaLock,
   FaExchangeAlt,
   FaClock,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import { LuArrowUpDown } from "react-icons/lu";
 import { AuthContext } from "../../../context/AuthContext";
@@ -17,11 +19,29 @@ import { AuthContext } from "../../../context/AuthContext";
 const CreatedAdminList = () => {
   const { creatorId } = useParams();
   const [createdAdmins, setCreatedAdmins] = useState([]);
+  const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const adminsPerPage = 15;
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
+  // Search & Filter States
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  // Edit Modal States
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    adminId: "",
+    username: "",
+    newPassword: "",
+    confirmPassword: "",
+    currentPassword: "",
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+
+  // Status Change Modal States
   const [selectedAdminId, setSelectedAdminId] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusForm, setStatusForm] = useState({
@@ -29,13 +49,15 @@ const CreatedAdminList = () => {
     status: "Active",
     password: "",
   });
+
   const { motherAdmin } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const fetchCreatedAdmins = async () => {
     try {
       setLoading(true);
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/admins/created/${creatorId}`
+        `${import.meta.env.VITE_API_URL}/api/admins/created/${creatorId}`,
       );
       setCreatedAdmins(res.data);
       setLoading(false);
@@ -50,14 +72,34 @@ const CreatedAdminList = () => {
     fetchCreatedAdmins();
   }, [creatorId]);
 
-  // Pagination logic
+  // Search and Filter Logic
+  useEffect(() => {
+    let result = [...createdAdmins];
+
+    // Search by username
+    if (searchTerm.trim()) {
+      result = result.filter((admin) =>
+        admin.username.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+    }
+
+    // Filter by status
+    if (statusFilter !== "ALL") {
+      result = result.filter((admin) => admin.status === statusFilter);
+    }
+
+    setFilteredAdmins(result);
+    setCurrentPage(1); // Reset to first page on filter change
+  }, [createdAdmins, searchTerm, statusFilter]);
+
+  // Pagination
   const indexOfLastAdmin = currentPage * adminsPerPage;
   const indexOfFirstAdmin = indexOfLastAdmin - adminsPerPage;
-  const currentAdmins = createdAdmins.slice(
+  const currentAdmins = filteredAdmins.slice(
     indexOfFirstAdmin,
-    indexOfLastAdmin
+    indexOfLastAdmin,
   );
-  const totalPages = Math.ceil(createdAdmins.length / adminsPerPage);
+  const totalPages = Math.ceil(filteredAdmins.length / adminsPerPage);
 
   const nextPage = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
@@ -86,7 +128,7 @@ const CreatedAdminList = () => {
       totalBal: 0,
       playerBal: 0,
       refPL: 0,
-    }
+    },
   );
 
   const menuItems = [
@@ -97,6 +139,7 @@ const CreatedAdminList = () => {
     { icon: <FaLock />, label: "Block Market" },
   ];
 
+  // Status Change Handlers
   const openStatusModal = (adminId) => {
     setSelectedAdminId(adminId);
     setStatusForm({ adminId, status: "Active", password: "" });
@@ -112,46 +155,101 @@ const CreatedAdminList = () => {
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/admins/change-status`,
-        statusForm
+        statusForm,
       );
       if (res.data.success) {
         toast.success("✅ Status changed successfully!");
         setStatusModalOpen(false);
-        fetchAgents(); // Refresh the agent list
+        fetchCreatedAdmins(); // Fixed: was calling fetchAgents()
       }
     } catch (error) {
-      console.error("Error changing status:", error);
-      toast.error("❌ Failed to change status");
+      toast.error(
+        error.response?.data?.message || "❌ Failed to change status",
+      );
+    }
+  };
+
+  // Edit Modal (FaUser Button)
+  const openEditModal = (admin) => {
+    setEditForm({
+      adminId: admin._id,
+      username: admin.username,
+      newPassword: "",
+      confirmPassword: "",
+      currentPassword: "",
+    });
+    setEditModalOpen(true);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setShowCurrentPassword(false);
+  };
+
+  const handleEditChange = (e) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+
+    if (
+      editForm.newPassword &&
+      editForm.newPassword !== editForm.confirmPassword
+    ) {
+      return toast.error("❌ New passwords do not match");
+    }
+
+    try {
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/admins/${editForm.adminId}/update`,
+        {
+          username: editForm.username,
+          newPassword: editForm.newPassword || undefined,
+          currentPassword: editForm.currentPassword,
+        },
+      );
+
+      if (res.data.success) {
+        toast.success("✅ Admin updated successfully!");
+        setEditModalOpen(false);
+        fetchCreatedAdmins();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "❌ Failed to update admin");
     }
   };
 
   return (
     <div className="p-4 bg-gray-100 min-h-screen">
-      {/* Header Section */}
+      {/* Header with Search and Filter */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <input
             type="text"
-            placeholder="Find more member"
-            className="border border-gray-300 rounded px-2 py-1 w-64"
+            placeholder="Find by username"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1 w-64 focus:outline-none"
           />
           <FaSearch className="text-gray-600" />
-          <select className="border border-gray-300 rounded px-2 py-1 text-sm">
-            <option>ALL</option>
-            <option>ACTIVE</option>
-            <option>SUSPEND</option>
-            <option>LOCKED</option>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none"
+          >
+            <option value="ALL">ALL</option>
+            <option value="Active">ACTIVE</option>
+            <option value="Suspend">SUSPEND</option>
+            <option value="Locked">LOCKED</option>
           </select>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={fetchCreatedAdmins}
-            className="py-2 px-4 rounded bg-yellow-50 border border-gray-200 cursor-pointer hover:bg-yellow-100"
-          >
-            <TfiReload size={20} />
-          </button>
-        </div>
+        <button
+          onClick={fetchCreatedAdmins}
+          className="py-2 px-4 rounded bg-yellow-50 border border-gray-200 cursor-pointer hover:bg-yellow-100"
+        >
+          <TfiReload size={20} />
+        </button>
       </div>
 
       {/* Summary Section */}
@@ -182,11 +280,11 @@ const CreatedAdminList = () => {
         </div>
       </div>
 
-      {/* Conditional Rendering: Table or Empty Message */}
+      {/* Main Content */}
       {loading ? (
-        <div className="text-center text-gray-600">Loading...</div>
+        <div className="text-center text-gray-600 py-10">Loading...</div>
       ) : createdAdmins.length === 0 ? (
-        <div className="bg-white rounded shadow p-4 text-center text-lg text-yellow-600 font-semibold">
+        <div className="bg-white rounded shadow p-8 text-center text-lg text-yellow-600 font-semibold">
           Please add user fast
         </div>
       ) : (
@@ -246,9 +344,7 @@ const CreatedAdminList = () => {
                     <span
                       onClick={() =>
                         navigate(
-                          `/${motherAdmin.role.toLowerCase()}/created-admins/${
-                            u._id
-                          }`
+                          `/${motherAdmin.role.toLowerCase()}/created-admins/${u._id}`,
                         )
                       }
                       className={`
@@ -257,23 +353,23 @@ const CreatedAdminList = () => {
                           u.role === "MA"
                             ? "bg-purple-200 text-purple-800 hover:bg-purple-300"
                             : u.role === "SA"
-                            ? "bg-blue-200 text-blue-800 hover:bg-blue-300"
-                            : u.role === "MT"
-                            ? "bg-green-200 text-green-800 hover:bg-green-300"
-                            : u.role === "AG"
-                            ? "bg-yellow-200 text-yellow-800 hover:bg-yellow-300"
-                            : u.role === "SG"
-                            ? "bg-pink-200 text-pink-800 hover:bg-pink-300"
-                            : u.role === "US"
-                            ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                            : "bg-slate-200 text-slate-800 hover:bg-slate-300"
+                              ? "bg-blue-200 text-blue-800 hover:bg-blue-300"
+                              : u.role === "MT"
+                                ? "bg-green-200 text-green-800 hover:bg-green-300"
+                                : u.role === "AG"
+                                  ? "bg-yellow-200 text-yellow-800 hover:bg-yellow-300"
+                                  : u.role === "SG"
+                                    ? "bg-pink-200 text-pink-800 hover:bg-pink-300"
+                                    : u.role === "US"
+                                      ? "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                      : "bg-slate-200 text-slate-800 hover:bg-slate-300"
                         }
                       `}
                     >
                       {u.role}
                     </span>
                     <span className="text-blue-600 font-bold underline cursor-pointer hover:no-underline">
-                        {u.username}
+                      {u.username}
                     </span>
                   </td>
                   <td className="p-2 text-center">
@@ -303,10 +399,10 @@ const CreatedAdminList = () => {
                         u.status === "Active"
                           ? "bg-green-100 text-green-700"
                           : u.status === "Suspend"
-                          ? "bg-red-100 text-red-700"
-                          : u.status === "Locked"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-gray-100 text-gray-700" // default fallback
+                            ? "bg-red-100 text-red-700"
+                            : u.status === "Locked"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       ● {u.status}
@@ -316,14 +412,17 @@ const CreatedAdminList = () => {
                     <div className="flex justify-center space-x-2">
                       <button
                         onClick={() => openStatusModal(u._id)}
-                        className="p-2 border rounded bg-yellow-50 hover:cursor-pointer"
+                        className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
                       >
                         <FaCog size={16} />
                       </button>
-                      <button className="p-2 border rounded bg-yellow-50 hover:cursor-pointer">
+                      <button
+                        onClick={() => openEditModal(u)}
+                        className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
+                      >
                         <FaUser size={16} />
                       </button>
-                      <button className="p-2 border rounded bg-yellow-50 hover:cursor-pointer">
+                      <button className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer">
                         <FaLock size={16} />
                       </button>
                     </div>
@@ -398,6 +497,140 @@ const CreatedAdminList = () => {
         </div>
       )}
 
+      {/* ====================== EDIT ADMIN MODAL ====================== */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white shadow-lg w-1/3 rounded-2xl">
+            <div className="bg-yellow-600 text-white p-3 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
+              <h3 className="text-lg font-bold">Edit Admin</h3>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="text-white hover:text-gray-200 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={editForm.username}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password (leave blank if not changing)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    name="newPassword"
+                    value={editForm.newPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showNewPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={editForm.confirmPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Current Password (Verification)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    name="currentPassword"
+                    value={editForm.currentPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showCurrentPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your password to authorize this change
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-5 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 transition"
+                >
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Modal */}
       {statusModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
           <div className="bg-white shadow-lg w-1/3 rounded-2xl">

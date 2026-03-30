@@ -6,8 +6,7 @@ import { IoCloseSharp } from "react-icons/io5";
 import { useSelector } from "react-redux";
 
 const AccountStatement = () => {
-
-  const { user,balance } = useContext(AuthContext); 
+  const { user, balance } = useContext(AuthContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleModalOpen = () => setIsModalOpen(true);
@@ -57,7 +56,7 @@ const AccountStatement = () => {
               <tr>
                 <td className="py-2 font-bold">Balance</td>
                 <td className="py-2 text-right font-bold text-[#6f88a5]">
-                  {balance || "0.00"}
+                  {Number(balance || 0).toFixed(2)}
                 </td>
               </tr>
               <tr>

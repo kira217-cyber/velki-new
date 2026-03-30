@@ -46,15 +46,12 @@ const getWeeklyRange = () => {
   const now = new Date();
   const start = new Date(now);
   start.setDate(now.getDate() - 6);
-
   const sy = start.getFullYear();
   const sm = String(start.getMonth() + 1).padStart(2, "0");
   const sd = String(start.getDate()).padStart(2, "0");
-
   const ey = now.getFullYear();
   const em = String(now.getMonth() + 1).padStart(2, "0");
   const ed = String(now.getDate()).padStart(2, "0");
-
   return {
     fromDate: `${sy}-${sm}-${sd}`,
     fromTime: "00:00:00",
@@ -73,10 +70,8 @@ const formatNumber = (num) => {
 
 const formatDateTime = (date, timezone) => {
   if (!date) return "-";
-
   const safeTimezone =
     !timezone || timezone === "All Timezones" ? "Asia/Dhaka" : timezone;
-
   try {
     return new Intl.DateTimeFormat("en-GB", {
       timeZone: safeTimezone,
@@ -102,7 +97,6 @@ const StatBadge = ({ label, value, color = "gray" }) => {
     yellow: "bg-yellow-100 text-yellow-700 border-yellow-200",
     orange: "bg-orange-100 text-orange-700 border-orange-200",
   };
-
   return (
     <div
       className={`border rounded-lg px-3 py-2 ${styles[color] || styles.gray}`}
@@ -116,11 +110,8 @@ const StatBadge = ({ label, value, color = "gray" }) => {
 const ProfitLossReportByDownLine = () => {
   const [lastTxn, setLastTxn] = useState("40 Txn");
   const { motherAdmin } = useContext(AuthContext);
-
   const currentAdminId = motherAdmin?._id || "";
   const currentAdminRole = motherAdmin?.role || "";
-
-  console.log("Admin Id and Role", currentAdminId, currentAdminRole);
 
   // applied filters
   const [search, setSearch] = useState("");
@@ -196,6 +187,7 @@ const ProfitLossReportByDownLine = () => {
         ...customFilters,
       };
 
+      // Clean empty params
       Object.keys(params).forEach((key) => {
         if (
           params[key] === "" ||
@@ -253,7 +245,6 @@ const ProfitLossReportByDownLine = () => {
 
   useEffect(() => {
     if (!currentAdminId || !currentAdminRole) return;
-
     fetchReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -292,7 +283,6 @@ const ProfitLossReportByDownLine = () => {
     setToDateInput("");
     setToTimeInput("23:59:59");
     setTimezoneInput("Asia/Dhaka");
-
     setPage(1);
     setSearch("");
     setBetType("ALL");
@@ -372,7 +362,6 @@ const ProfitLossReportByDownLine = () => {
               <label className="text-sm font-semibold text-gray-700">
                 Last:
               </label>
-
               <select
                 value={lastTxn}
                 onChange={(e) => {
@@ -464,7 +453,6 @@ const ProfitLossReportByDownLine = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-sm font-semibold text-gray-700">
                 From Time
@@ -477,7 +465,6 @@ const ProfitLossReportByDownLine = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-sm font-semibold text-gray-700">
                 To Date
@@ -489,7 +476,6 @@ const ProfitLossReportByDownLine = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-sm font-semibold text-gray-700">
                 To Time
@@ -561,28 +547,24 @@ const ProfitLossReportByDownLine = () => {
               >
                 All Time
               </button>
-
               <button
                 onClick={handleToday}
                 className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-700 hover:bg-yellow-100"
               >
                 Just For Today
               </button>
-
               <button
                 onClick={handleYesterday}
                 className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-700 hover:bg-yellow-100"
               >
                 Yesterday
               </button>
-
               <button
                 onClick={handleWeekly}
                 className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-700 hover:bg-yellow-100"
               >
                 Weekly
               </button>
-
               <button
                 onClick={applyFilters}
                 className="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700"
@@ -597,7 +579,7 @@ const ProfitLossReportByDownLine = () => {
           </div>
         </div>
 
-        {/* stats */}
+        {/* Stats */}
         <div className="grid grid-cols-2 gap-3 border-b border-gray-200 bg-white px-3 py-4 sm:grid-cols-3 lg:grid-cols-6 sm:px-4">
           <StatBadge
             label="Records"
@@ -672,7 +654,6 @@ const ProfitLossReportByDownLine = () => {
                           {formatDateTime(item.createdAt, timezone)}
                         </div>
                       </div>
-
                       <div
                         className={`rounded-full px-2 py-1 text-xs font-semibold ${
                           item.status === "won"
@@ -695,28 +676,24 @@ const ProfitLossReportByDownLine = () => {
                           {item.provider_code || "-"}
                         </div>
                       </div>
-
-                      <div className="rounded-md bg-gray-50 p-2">
+                      {/* <div className="rounded-md bg-gray-50 p-2">
                         <div className="text-xs text-gray-500">Game Code</div>
                         <div className="font-medium text-gray-700">
                           {item.game_code || "-"}
                         </div>
-                      </div>
-
+                      </div> */}
                       <div className="rounded-md bg-gray-50 p-2">
                         <div className="text-xs text-gray-500">Bet Type</div>
                         <div className="font-medium text-gray-700">
                           {item.bet_type || "-"}
                         </div>
                       </div>
-
                       <div className="rounded-md bg-gray-50 p-2">
                         <div className="text-xs text-gray-500">Amount</div>
                         <div className="font-medium text-gray-700">
                           {formatNumber(item.amount)}
                         </div>
                       </div>
-
                       <div className="col-span-2 rounded-md bg-gray-50 p-2 break-all">
                         <div className="text-xs text-gray-500">
                           Transaction ID
@@ -747,7 +724,6 @@ const ProfitLossReportByDownLine = () => {
                       <th className="border px-3 py-2">Transaction ID</th>
                     </tr>
                   </thead>
-
                   <tbody>
                     {rows.map((item, index) => (
                       <tr
@@ -799,6 +775,7 @@ const ProfitLossReportByDownLine = () => {
                       </tr>
                     ))}
 
+                    {/* Grand Total Row */}
                     <tr className="bg-green-50 font-bold">
                       <td className="border px-3 py-2" colSpan="2">
                         Grand Total
@@ -820,14 +797,13 @@ const ProfitLossReportByDownLine = () => {
                 </table>
               </div>
 
-              {/* bottom pagination */}
+              {/* Bottom pagination */}
               <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="text-sm text-gray-700">
                   Page <span className="font-semibold">{pagination.page}</span>{" "}
                   of{" "}
                   <span className="font-semibold">{pagination.totalPages}</span>
                 </div>
-
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() =>
@@ -843,7 +819,6 @@ const ProfitLossReportByDownLine = () => {
                   >
                     Previous
                   </button>
-
                   <button
                     onClick={() =>
                       pagination.hasNext && setPage((prev) => prev + 1)

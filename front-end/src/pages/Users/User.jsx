@@ -7,6 +7,8 @@ import {
   FaLock,
   FaExchangeAlt,
   FaClock,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import { IoMdAdd } from "react-icons/io";
 import { LuArrowUpDown } from "react-icons/lu";
@@ -14,12 +16,33 @@ import { TfiReload } from "react-icons/tfi";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router";
+import DashboardSwitcher from "../../Components/Dashboard/DashboardSwitcher";
 
 const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 15;
+
+  // Search & Filter
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  // Edit Modal States
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    adminId: "",
+    username: "",
+    newPassword: "",
+    confirmPassword: "",
+    currentPassword: "",
+  });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+
+  // Status Modal States
   const [selectedAdminId, setSelectedAdminId] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusForm, setStatusForm] = useState({
@@ -46,39 +69,36 @@ const Users = () => {
     lastName: "",
     phone: "",
     timeZone: "Asia/Dhaka",
+    reffer: "",
   });
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-const fetchUsers = async () => {
-  try {
-    let res;
+  const handleEditChange = (e) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
 
-    // ✅ যদি mother admin হয়
-    if (motherAdmin?.role === "MA") {
-      res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admins`);
-    } 
-    // ✅ অন্য admin হলে শুধু নিজের তৈরি user ফেচ করবে
-    else {
-      res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/admins/created/${motherAdmin?._id}`
-      );
+  // Fetch Users (All for Mother Admin, Created for others)
+  const fetchUsers = async () => {
+    try {
+      let res;
+      if (motherAdmin?.role === "MA") {
+        res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admins`);
+      } else {
+        res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/admins/created/${motherAdmin?._id}`,
+        );
+      }
+
+      const filteredUsers = res.data.filter((u) => u.role === "US");
+      setUsers(filteredUsers);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      toast.error("❌ Failed to load user data");
     }
-
-    // ✅ শুধু role === "US" ফিল্টার করা হচ্ছে
-    const filteredUsers = res.data.filter((u) => u.role === "US");
-    setUsers(filteredUsers);
-  } catch (error) {
-    console.error("Fetch error:", error);
-    toast.error("❌ Failed to load user data");
-  }
-};
-
+  };
 
   useEffect(() => {
     if (motherAdmin) {
@@ -86,69 +106,29 @@ const fetchUsers = async () => {
     }
   }, [motherAdmin]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/admins`,
-        {
-          ...formData,
-          role: "US",
-          createdBy: motherAdmin?._id || null,
-        }
+  // Search & Filter Logic
+  useEffect(() => {
+    let result = [...users];
+
+    if (searchTerm.trim()) {
+      result = result.filter((user) =>
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()),
       );
-      if (res.data.success) {
-        toast.success("✅ User added successfully!");
-        setIsModalOpen(false);
-        setFormData({
-          username: "",
-          password: "",
-          firstName: "",
-          reffer:" ",
-          lastName: "",
-          phone: "",
-          timeZone: "Asia/Dhaka",
-        });
-        fetchUsers();
-      }
-    } catch (error) {
-      console.error("Error adding user:", error);
-      toast.error("❌ Failed to add user");
     }
-  };
 
-  const handleStatusChange = (e) => {
-    setStatusForm({ ...statusForm, [e.target.name]: e.target.value });
-  };
-
-  const openStatusModal = (adminId) => {
-    setSelectedAdminId(adminId);
-    setStatusForm({ adminId, status: "Active", password: "" });
-    setStatusModalOpen(true);
-  };
-
-  const submitStatusChange = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/admins/change-status`,
-        statusForm
-      );
-      if (res.data.success) {
-        toast.success("✅ Status changed successfully!");
-        setStatusModalOpen(false);
-        fetchUsers();
-      }
-    } catch (error) {
-      console.error("Error changing status:", error);
-      toast.error("❌ Failed to change status");
+    if (statusFilter !== "ALL") {
+      result = result.filter((user) => user.status === statusFilter);
     }
-  };
 
+    setFilteredUsers(result);
+    setCurrentPage(1);
+  }, [users, searchTerm, statusFilter]);
+
+  // Pagination
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(users.length / usersPerPage);
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
   const nextPage = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
@@ -157,6 +137,7 @@ const fetchUsers = async () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
+  // Calculate totals
   const totals = currentUsers.reduce(
     (acc, u) => {
       acc.credit += u.credit || 0;
@@ -176,7 +157,7 @@ const fetchUsers = async () => {
       totalBal: 0,
       playerBal: 0,
       refPL: 0,
-    }
+    },
   );
 
   const menuItems = [
@@ -187,21 +168,134 @@ const fetchUsers = async () => {
     { icon: <FaLock />, label: "Block Market" },
   ];
 
+  const handleStatusChange = (e) => {
+    setStatusForm({ ...statusForm, [e.target.name]: e.target.value });
+  };
+
+  const openStatusModal = (adminId) => {
+    setSelectedAdminId(adminId);
+    setStatusForm({ adminId, status: "Active", password: "" });
+    setStatusModalOpen(true);
+  };
+
+  const submitStatusChange = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/admins/change-status`,
+        statusForm,
+      );
+      if (res.data.success) {
+        toast.success("✅ Status changed successfully!");
+        setStatusModalOpen(false);
+        fetchUsers();
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "❌ Failed to change status",
+      );
+    }
+  };
+
+  // Edit Modal Handlers
+  const openEditModal = (user) => {
+    setEditForm({
+      adminId: user._id,
+      username: user.username,
+      newPassword: "",
+      confirmPassword: "",
+      currentPassword: "",
+    });
+    setEditModalOpen(true);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setShowCurrentPassword(false);
+  };
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+
+    if (
+      editForm.newPassword &&
+      editForm.newPassword !== editForm.confirmPassword
+    ) {
+      return toast.error("❌ New passwords do not match");
+    }
+
+    try {
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/admins/${editForm.adminId}/update`,
+        {
+          username: editForm.username,
+          newPassword: editForm.newPassword || undefined,
+          currentPassword: editForm.currentPassword,
+        },
+      );
+
+      if (res.data.success) {
+        toast.success("✅ User updated successfully!");
+        setEditModalOpen(false);
+        fetchUsers();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "❌ Failed to update user");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/admins`,
+        {
+          ...formData,
+          role: "US",
+          createdBy: motherAdmin?._id || null,
+        },
+      );
+      if (res.data.success) {
+        toast.success("✅ User added successfully!");
+        setIsModalOpen(false);
+        setFormData({
+          username: "",
+          password: "",
+          firstName: "",
+          lastName: "",
+          phone: "",
+          timeZone: "Asia/Dhaka",
+          reffer: "",
+        });
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error("Error adding user:", error);
+      toast.error("❌ Failed to add user");
+    }
+  };
+
   return (
     <div className="p-4 bg-gray-100 min-h-screen">
+      {/* Header with Search & Filter */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <input
             type="text"
-            placeholder="Find more member"
-            className="border border-gray-300 rounded px-2 py-1 w-64"
+            placeholder="Find by username"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1 w-64 focus:outline-none"
           />
           <FaSearch className="text-gray-600" />
-          <select className="border border-gray-300 rounded px-2 py-1 text-sm">
-            <option>ALL</option>
-            <option>ACTIVE</option>
-            <option>SUSPEND</option>
-            <option>LOCKED</option>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none"
+          >
+            <option value="ALL">ALL</option>
+            <option value="Active">ACTIVE</option>
+            <option value="Suspend">SUSPEND</option>
+            <option value="Locked">LOCKED</option>
           </select>
         </div>
 
@@ -222,31 +316,10 @@ const fetchUsers = async () => {
         </div>
       </div>
 
-      <div className="flex bg-[#f5f6f8] border-b mb-5 overflow-hidden">
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Total Balance</p>
-          <h2 className="font-extrabold text-lg text-black">PBU 3,96,500.00</h2>
-        </div>
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Net Exposure</p>
-          <h2 className="font-extrabold text-lg text-yellow-600">PBU (610.17)</h2>
-        </div>
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Balance</p>
-          <h2 className="font-extrabold text-lg text-black">PBU 0.00</h2>
-        </div>
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Balance in Downline</p>
-          <h2 className="font-extrabold text-lg text-black">PBU 63,825.13</h2>
-        </div>
-        <div className="flex-1 px-4 py-3">
-          <p className="text-gray-600 text-sm">Transferable P/L with Upline</p>
-          <h2 className="font-extrabold text-lg text-yellow-600">
-            PBU (3,32,080.13)
-          </h2>
-        </div>
-      </div>
+      {/* Summary Section */}
+      <DashboardSwitcher />
 
+      {/* Table Section */}
       <div className="bg-white rounded shadow overflow-hidden">
         <table className="w-full border-collapse">
           <thead className="bg-[#1f3349] text-white">
@@ -254,39 +327,25 @@ const fetchUsers = async () => {
               <th className="p-2 text-left">Account</th>
               <th className="p-2 text-right">Credit Ref.</th>
               <th className="p-2 text-right">
-                <span className="flex items-center justify-center">
-                  Balance <LuArrowUpDown />
-                </span>
+                Balance <LuArrowUpDown />
               </th>
               <th className="p-2 text-right">
-                <span className="flex items-center justify-center">
-                  Exposure <LuArrowUpDown />
-                </span>
+                Exposure <LuArrowUpDown />
               </th>
               <th className="p-2 text-right">
-                <span className="flex items-center justify-center">
-                  Avail. bal. <LuArrowUpDown />
-                </span>
+                Avail. bal. <LuArrowUpDown />
               </th>
               <th className="p-2 text-right">
-                <span className="flex items-center justify-center">
-                  TotalBalance <LuArrowUpDown />
-                </span>
+                TotalBalance <LuArrowUpDown />
               </th>
               <th className="p-2 text-right">
-                <span className="flex items-center justify-center">
-                  Player Balance <LuArrowUpDown />
-                </span>
+                Player Balance <LuArrowUpDown />
               </th>
               <th className="p-2 text-right">
-                <span className="flex items-center justify-center">
-                  Ref. P/L <LuArrowUpDown />
-                </span>
+                Ref. P/L <LuArrowUpDown />
               </th>
               <th className="p-2 text-center">
-                <span className="flex items-center justify-center">
-                  Status <LuArrowUpDown />
-                </span>
+                Status <LuArrowUpDown />
               </th>
               <th className="p-2 text-right">Action</th>
             </tr>
@@ -295,17 +354,13 @@ const fetchUsers = async () => {
             {currentUsers.map((u, i) => (
               <tr
                 key={u._id}
-                className={`border-b text-sm ${
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50"
-                }`}
+                className={`border-b text-sm ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
               >
                 <td className="p-2 flex items-center space-x-1">
                   <span
                     onClick={() =>
                       navigate(
-                        `/${motherAdmin.role.toLowerCase()}/created-admins/${
-                          u._id
-                        }`
+                        `/${motherAdmin.role.toLowerCase()}/created-admins/${u._id}`,
                       )
                     }
                     className="bg-red-200 font-bold text-red-800 text-xs px-2 py-1 rounded-[4px] cursor-pointer hover:bg-red-300 transition"
@@ -341,10 +396,10 @@ const fetchUsers = async () => {
                       u.status === "Active"
                         ? "bg-green-100 text-green-700"
                         : u.status === "Suspend"
-                        ? "bg-red-100 text-red-700"
-                        : u.status === "Locked"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-100 text-gray-700" // default fallback
+                          ? "bg-red-100 text-red-700"
+                          : u.status === "Locked"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-gray-100 text-gray-700"
                     }`}
                   >
                     ● {u.status}
@@ -353,21 +408,25 @@ const fetchUsers = async () => {
                 <td className="p-2 text-center">
                   <div className="flex justify-center space-x-2">
                     <button
-                      className="p-2 border rounded bg-yellow-50 hover:cursor-pointer"
                       onClick={() => openStatusModal(u._id)}
+                      className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
                     >
                       <FaCog size={16} />
                     </button>
-                    <button className="p-2 border rounded bg-yellow-50 hover:cursor-pointer">
+                    <button
+                      onClick={() => openEditModal(u)}
+                      className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer"
+                    >
                       <FaUser size={16} />
                     </button>
-                    <button className="p-2 border rounded bg-yellow-50 hover:cursor-pointer">
+                    <button className="p-2 border rounded bg-yellow-50 hover:bg-yellow-100 cursor-pointer">
                       <FaLock size={16} />
                     </button>
                   </div>
                 </td>
               </tr>
             ))}
+
             <tr className="bg-[#FFEDD5] border-t font-semibold">
               <td className="p-2">Total (Page {currentPage})</td>
               <td className="p-2 text-right">
@@ -397,6 +456,7 @@ const fetchUsers = async () => {
           </tbody>
         </table>
 
+        {/* Pagination */}
         <div className="flex items-center justify-center p-3 border-t border-b border-dashed text-sm mt-4">
           <button
             onClick={prevPage}
@@ -417,6 +477,7 @@ const fetchUsers = async () => {
           </button>
         </div>
 
+        {/* Bottom Menu */}
         <div className="flex flex-wrap justify-end mr-8 items-center gap-3 py-2 bg-white border-t border-gray-300">
           {menuItems.map((item, index) => (
             <React.Fragment key={index}>
@@ -431,6 +492,7 @@ const fetchUsers = async () => {
         </div>
       </div>
 
+      {/* ====================== ADD USER MODAL ====================== */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
           <div className="bg-white shadow-lg w-1/2 rounded-2xl">
@@ -463,7 +525,6 @@ const fetchUsers = async () => {
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
-                        placeholder="Enter username"
                         className="w-full ml-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
                         required
                       />
@@ -478,7 +539,6 @@ const fetchUsers = async () => {
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Enter password"
                         className="w-full ml-2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
                         required
                       />
@@ -493,7 +553,6 @@ const fetchUsers = async () => {
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleChange}
-                        placeholder="Enter first name"
                         className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
                         required
                       />
@@ -511,7 +570,6 @@ const fetchUsers = async () => {
                         placeholder="Reffer Code (Optional)"
                         className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
                       />
-
                     </div>
                   </div>
                   <div>
@@ -524,7 +582,6 @@ const fetchUsers = async () => {
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleChange}
-                        placeholder="Enter last name"
                         className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
                         required
                       />
@@ -539,7 +596,6 @@ const fetchUsers = async () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
-                        placeholder="Enter phone number"
                         className="w-full ml-[26px] border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
                         required
                       />
@@ -580,6 +636,140 @@ const fetchUsers = async () => {
         </div>
       )}
 
+      {/* ====================== EDIT USER MODAL ====================== */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white shadow-lg w-1/3 rounded-2xl">
+            <div className="bg-yellow-600 text-white p-3 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
+              <h3 className="text-lg font-bold">Edit User</h3>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="text-white hover:text-gray-200 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={editForm.username}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password (leave blank if not changing)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    name="newPassword"
+                    value={editForm.newPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10"
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showNewPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={editForm.confirmPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10"
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Your Current Password (Verification)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    name="currentPassword"
+                    value={editForm.currentPassword}
+                    onChange={handleEditChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showCurrentPassword ? (
+                      <FaEyeSlash size={18} />
+                    ) : (
+                      <FaEye size={18} />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your password to authorize this change
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-5 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 transition"
+                >
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Modal */}
       {statusModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
           <div className="bg-white shadow-lg w-1/3 rounded-2xl">
@@ -601,7 +791,7 @@ const fetchUsers = async () => {
                   type="text"
                   value={selectedAdminId || ""}
                   disabled
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
+                  className="w-full border border-gray-300 rounded px-3 py-2"
                 />
               </div>
               <div className="mb-4 flex justify-center space-x-4">
@@ -610,11 +800,7 @@ const fetchUsers = async () => {
                   onClick={() =>
                     setStatusForm({ ...statusForm, status: "Active" })
                   }
-                  className={`p-2 border rounded cursor-pointer ${
-                    statusForm.status === "Active"
-                      ? "bg-gray-300"
-                      : "bg-yellow-50"
-                  }`}
+                  className={`p-2 border rounded cursor-pointer ${statusForm.status === "Active" ? "bg-gray-300" : "bg-yellow-50"}`}
                 >
                   <span className="text-green-600">✔</span> Active
                 </button>
@@ -623,11 +809,7 @@ const fetchUsers = async () => {
                   onClick={() =>
                     setStatusForm({ ...statusForm, status: "Suspend" })
                   }
-                  className={`p-2 border rounded cursor-pointer ${
-                    statusForm.status === "Suspend"
-                      ? "bg-gray-300"
-                      : "bg-yellow-50"
-                  }`}
+                  className={`p-2 border rounded cursor-pointer ${statusForm.status === "Suspend" ? "bg-gray-300" : "bg-yellow-50"}`}
                 >
                   <span className="text-red-600">✖</span> Suspend
                 </button>
@@ -636,11 +818,7 @@ const fetchUsers = async () => {
                   onClick={() =>
                     setStatusForm({ ...statusForm, status: "Locked" })
                   }
-                  className={`p-2 border rounded cursor-pointer ${
-                    statusForm.status === "Locked"
-                      ? "bg-gray-300"
-                      : "bg-yellow-50"
-                  }`}
+                  className={`p-2 border rounded cursor-pointer ${statusForm.status === "Locked" ? "bg-gray-300" : "bg-yellow-50"}`}
                 >
                   <span className="text-gray-600">🔒</span> Locked
                 </button>
@@ -655,7 +833,7 @@ const fetchUsers = async () => {
                   value={statusForm.password}
                   onChange={handleStatusChange}
                   placeholder="Enter password"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
+                  className="w-full border border-gray-300 rounded px-3 py-2"
                   required
                 />
               </div>

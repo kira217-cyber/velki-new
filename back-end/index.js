@@ -25,6 +25,10 @@ import categoriesRoutes from "./routes/categoriesRoutes.js";
 import selectedGamesRoutes from "./routes/selectedGameRoutes.js";
 import callBackRoutes from "./routes/callBackRoutes.js"
 import gameHistoryReportRoutes from "./routes/gameHistoryReportRoutes.js";
+import summaryCardRoutes from "./routes/summaryCardRoutes.js";
+import adminSummaryRoutes from "./routes/adminSummaryRoutes.js";
+
+
 
 
 
@@ -72,6 +76,10 @@ app.use("/api/categories", categoriesRoutes);
 app.use("/api/selected-games", selectedGamesRoutes);
 app.use("/api/callback-data-game", callBackRoutes)
 app.use("/api/game-history", gameHistoryReportRoutes);
+app.use("/api/summary", summaryCardRoutes);
+app.use("/api/admin-summary", adminSummaryRoutes);
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT} v2.0`));

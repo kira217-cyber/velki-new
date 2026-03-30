@@ -649,4 +649,77 @@ router.post("/change-status", async (req, res) => {
   }
 });
 
+// PUT /api/admins/:id/update
+router.put("/:id/update", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, newPassword, currentPassword } = req.body;
+
+    // Validation
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is required for verification",
+      });
+    }
+
+    const admin = await Admin.findById(id);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    // Verify requester's password (plain text as you requested)
+    if (admin.password !== currentPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid current password",
+      });
+    }
+
+    let isUpdated = false;
+
+    // Update username if provided and different
+    if (username && username.trim() !== "" && username !== admin.username) {
+      admin.username = username.trim();
+      isUpdated = true;
+    }
+
+    // Update password if provided and different
+    if (newPassword && newPassword.trim() !== "" && newPassword !== admin.password) {
+      admin.password = newPassword.trim();   // Plain text as per your requirement
+      isUpdated = true;
+    }
+
+    // If nothing was changed
+    if (!isUpdated) {
+      return res.status(400).json({
+        success: false,
+        message: "No changes detected",
+      });
+    }
+
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Mother Admin updated successfully",
+      admin: {
+        _id: admin._id,
+        username: admin.username,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    console.error("Update admin error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update admin",
+      error: error.message,
+    });
+  }
+});
+
 export default router;
