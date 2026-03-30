@@ -20,15 +20,9 @@ router.post("/", async (req, res) => {
       times,
     } = req.body;
 
-    console.log("Callback received ->", {
-      account_id,
-      rawUsername,
-      provider_code,
-      amount,
-      bet_type,
-    });
+    console.log("Callback received ->", req.body);
 
-    // 🔴 Required fields check
+    // ✅ Required fields
     if (
       !rawUsername ||
       !provider_code ||
@@ -42,23 +36,15 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 🔹 Username clean (শেষের সংখ্যা কেটে ফেলা)
-    const cleanUsername = rawUsername.replace(/[0-9]+$/, "").trim();
+    // ✅ Username normalize (NO CUTTING)
+    const cleanUsername = rawUsername.trim().toLowerCase();
 
-    if (!cleanUsername) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid username format",
-      });
-    }
+    console.log("Searching user:", cleanUsername);
 
-    console.log("Searching user with username:", cleanUsername);
-
-    // 🔹 Find player
+    // ✅ Find user
     const player = await Admin.findOne({ username: cleanUsername });
 
     if (!player) {
-      console.log("User NOT found for:", cleanUsername);
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -69,63 +55,89 @@ router.post("/", async (req, res) => {
       });
     }
 
-    console.log(
-      "Player found:",
-      player.username,
-      "Current Balance (PBU):",
-      player.balance
-    );
-
-    // 🔹 Amount validation (BDT)
+    // ✅ Amount validation
     const amountBDT = parseFloat(amount);
     if (isNaN(amountBDT) || amountBDT < 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid amount value",
+        message: "Invalid amount",
       });
     }
 
-    // 🔹 Convert BDT → PBU
-    // Rule: 1 PBU = 100 BDT
+    // ✅ Convert BDT → PBU
     const amountPBU = amountBDT / 100;
 
-    // 🔹 Balance change (PBU)
     let balanceChange = 0;
+    let status = "lost";
 
-    if (bet_type === "BET") {
-      balanceChange = -amountPBU;
-    } else if (bet_type === "SETTLE") {
-      balanceChange = amountPBU;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid bet_type",
-      });
+    // ✅ Bet type handling
+    switch (bet_type) {
+      case "BET":
+        balanceChange = -amountPBU;
+        status = "lost";
+        break;
+
+      case "SETTLE":
+        balanceChange = amountPBU;
+        status = "won";
+        break;
+
+      case "REFUND":
+        balanceChange = amountPBU;
+        status = "refunded";
+        break;
+
+      case "CANCEL":
+        balanceChange = 0;
+        status = "cancelled";
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid bet_type",
+        });
     }
 
+    // ✅ Duplicate detect (BUT NOT BLOCK)
+    let isDuplicate = false;
+
+    if (transaction_id) {
+      isDuplicate = player.gameHistory.some(
+        (g) => g.transaction_id === transaction_id
+      );
+    }
+
+    // ✅ Balance calculation
     const previousBalance = player.balance || 0;
     const newBalance = previousBalance + balanceChange;
 
-    // 🔹 Game history record
+    // ✅ Prevent negative balance
+    if (newBalance < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance",
+      });
+    }
+
+    // ✅ Game history object
     const gameRecord = {
       username: player.username,
       provider_code,
       game_code,
       bet_type,
-      amount_bdt: amountBDT,
-      amount_pbu: amountPBU,
+      amount: amountBDT,
       transaction_id: transaction_id || null,
-      verification_key: verification_key || null,
-      times: times || null,
-      status: balanceChange > 0 ? "won" : "lost",
-      createdAt: new Date(),
+      verification_key: verification_key || "",
+      times: times || "",
+      status,
     };
 
-    // 🔹 Update DB
+    // ✅ Atomic update
     const updatedPlayer = await Admin.findOneAndUpdate(
       { _id: player._id },
       {
-        $set: { balance: newBalance },
+        $inc: { balance: balanceChange },
         $push: { gameHistory: gameRecord },
       },
       { new: true }
@@ -134,29 +146,23 @@ router.post("/", async (req, res) => {
     return res.json({
       success: true,
       message: "Callback processed successfully",
+      duplicate: isDuplicate, // শুধু info, block না
       data: {
-        original_username: rawUsername,
-        matched_username: player.username,
-        previous_balance_pbu: previousBalance,
-        change_pbu: balanceChange,
-        new_balance_pbu: updatedPlayer.balance,
-        amount_bdt: amountBDT,
-        amount_pbu: amountPBU,
+        username: player.username,
+        previous_balance: previousBalance,
+        change: balanceChange,
+        new_balance: updatedPlayer.balance,
       },
     });
   } catch (error) {
     console.error("Callback error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : undefined,
     });
   }
 });
-
 
 router.post("/playgame", async (req, res) => {
   try {
@@ -183,7 +189,7 @@ router.post("/playgame", async (req, res) => {
           headers: {
             "x-api-key": "ceeeba1c-892b-4571-b05f-2bcec5c4a44e",
           },
-        }
+        },
       );
 
       gameData = oracleRes.data?.data || null;
@@ -232,7 +238,7 @@ router.post("/playgame", async (req, res) => {
           "Content-Type": "application/x-www-form-urlencoded",
           "x-dstgame-key": "bb10373906ea00faa6717f10f8049c61",
         },
-      }
+      },
     );
 
     // provider response direct url / object দুইটাই handle করা হয়েছে
@@ -271,7 +277,6 @@ router.post("/playgame", async (req, res) => {
   }
 });
 
-
 router.post("/playgame-direct-gameuuid", async (req, res) => {
   try {
     const { gameID, username, money } = req.body;
@@ -290,7 +295,6 @@ router.post("/playgame-direct-gameuuid", async (req, res) => {
 
     console.log("Launching live game:", gameID);
 
-   
     const postData = {
       home_url: "https://velki360.com",
       token: "5a559cc11093333dd5986df2498c6aea",
@@ -301,9 +305,7 @@ router.post("/playgame-direct-gameuuid", async (req, res) => {
       gameid: gameID,
     };
 
-    console.log("this is post data -> ",postData);
-    
-
+    console.log("this is post data -> ", postData);
 
     const response = await axios.post(
       "https://crazybet99.com/getgameurl",
@@ -314,7 +316,7 @@ router.post("/playgame-direct-gameuuid", async (req, res) => {
           "x-dstgame-key": postData.token,
         },
         timeout: 15000,
-      }
+      },
     );
 
     console.log("Provider response:", response.data);
@@ -337,12 +339,8 @@ router.post("/playgame-direct-gameuuid", async (req, res) => {
       success: true,
       gameUrl,
     });
-
   } catch (error) {
-    console.error(
-      "PlayGame API Error:",
-      error.response?.data || error.message
-    );
+    console.error("PlayGame API Error:", error.response?.data || error.message);
 
     return res.status(500).json({
       success: false,
@@ -356,16 +354,16 @@ router.post("/test", async (req, res) => {
   try {
     const finalUsername = `roni45`;
     const postData = {
-      home_url: "https://cb66.online", 
-      token: "9c7bf891c268d1e0bcb1e723ae3c9b40", 
-      username: finalUsername, // চাইলে random করতে পারো 
+      home_url: "https://cb66.online",
+      token: "9c7bf891c268d1e0bcb1e723ae3c9b40",
+      username: finalUsername, // চাইলে random করতে পারো
       money: 100,
       gameid: "691b3574d5cae",
     };
     // const postData = {
-      // home_url: "https://velki360.com",
-      // token: "5a559cc11093333dd5986df2498c6aea",
-    //   username: finalUsername, // চাইলে random করতে পারো 
+    // home_url: "https://velki360.com",
+    // token: "5a559cc11093333dd5986df2498c6aea",
+    //   username: finalUsername, // চাইলে random করতে পারো
     //   money: 100,
     //   gameid: "691b3574d5cae",
     // };
@@ -381,7 +379,7 @@ router.post("/test", async (req, res) => {
           "x-dstgame-key": postData.token,
         },
         timeout: 15000,
-      }
+      },
     );
 
     console.log("Provider response:", response.data);
@@ -410,7 +408,6 @@ router.post("/test", async (req, res) => {
   }
 });
 
-
 // routes/callback.js এর ভিতরে এই route টা যোগ করো
 router.post("/refund", async (req, res) => {
   try {
@@ -418,7 +415,7 @@ router.post("/refund", async (req, res) => {
       account_id,
       username: rawUsername,
       provider_code,
-      amount,                // এখানে integer আসবে
+      amount, // এখানে integer আসবে
       game_code,
       verification_key,
       bet_type,
@@ -436,21 +433,16 @@ router.post("/refund", async (req, res) => {
     });
 
     // Required fields + bet_type check
-    if (
-      !rawUsername ||
-  
-      amount === undefined ||
-   
-      bet_type !== "CANCELBET"
-    ) {
+    if (!rawUsername || amount === undefined || bet_type !== "CANCELBET") {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields or invalid bet_type (only CANCELBET allowed)",
+        message:
+          "Missing required fields or invalid bet_type (only CANCELBET allowed)",
       });
     }
 
     // Amount কে integer হিসেবে validate করা (যদি string আসে তাহলে convert)
-    const amountBDT = Number(amount);   // string হলে number-এ কনভার্ট
+    const amountBDT = Number(amount); // string হলে number-এ কনভার্ট
     if (!Number.isInteger(amountBDT) || amountBDT < 0) {
       return res.status(400).json({
         success: false,
@@ -485,14 +477,14 @@ router.post("/refund", async (req, res) => {
       "Player found for refund:",
       player.username,
       "Current Balance (PBU):",
-      player.balance
+      player.balance,
     );
 
     // 1 PBU = 100 BDT → তাই amountBDT / 100
     const amountPBU = amountBDT / 100;
 
     // CANCELBET → refund (প্লাস হবে)
-    const balanceChange = amountPBU;  // positive
+    const balanceChange = amountPBU; // positive
 
     const previousBalance = player.balance || 0;
     const newBalance = previousBalance + balanceChange;
@@ -519,7 +511,7 @@ router.post("/refund", async (req, res) => {
         $set: { balance: newBalance },
         // $push: { gameHistory: gameRecord },
       },
-      { new: true }
+      { new: true },
     );
 
     return res.json({
