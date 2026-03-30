@@ -158,7 +158,6 @@ router.post("/", async (req, res) => {
 });
 
 
-
 router.post("/playgame", async (req, res) => {
   try {
     const { gameID, username, money } = req.body;
@@ -226,7 +225,7 @@ router.post("/playgame", async (req, res) => {
     console.log("Launching game with:", postData);
 
     const response = await axios.post(
-      "https://crazybet99.com/getgameurl/v2",
+      "https://crazybet99.com/getgameurl/v3",
       qs.stringify(postData),
       {
         headers: {
@@ -271,8 +270,6 @@ router.post("/playgame", async (req, res) => {
     });
   }
 });
-
-
 
 
 router.post("/playgame-direct-gameuuid", async (req, res) => {
