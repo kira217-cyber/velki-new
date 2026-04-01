@@ -27,6 +27,8 @@ import callBackRoutes from "./routes/callBackRoutes.js"
 import gameHistoryReportRoutes from "./routes/gameHistoryReportRoutes.js";
 import summaryCardRoutes from "./routes/summaryCardRoutes.js";
 import adminSummaryRoutes from "./routes/adminSummaryRoutes.js";
+import gameHistoryRoutes from "./routes/gameHistoryRoutes.js";
+
 
 
 
@@ -78,6 +80,7 @@ app.use("/api/callback-data-game", callBackRoutes)
 app.use("/api/game-history", gameHistoryReportRoutes);
 app.use("/api/summary", summaryCardRoutes);
 app.use("/api/admin-summary", adminSummaryRoutes);
+app.use("/api/game-history", gameHistoryRoutes);
 
 
 

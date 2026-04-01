@@ -298,7 +298,7 @@ const Agent = () => {
             onClick={() => setIsModalOpen(true)}
           >
             <IoMdAdd />
-            <span>Add Agent</span>
+            <span>Add Super Agent</span>
           </button>
           <button
             onClick={fetchAgents}
@@ -317,31 +317,45 @@ const Agent = () => {
         <table className="w-full border-collapse">
           <thead className="bg-[#1f3349] text-white">
             <tr>
-              <th className="p-2 text-left">Account</th>
-              <th className="p-2 text-right">Credit Ref.</th>
-              <th className="p-2 text-right">
-                Balance <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Exposure <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Avail. bal. <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                TotalBalance <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Player Balance <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Ref. P/L <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-center">
-                Status <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">Action</th>
-            </tr>
+                          <th className="p-2 text-left">Account</th>
+                          <th className="p-2 text-right">Credit Ref.</th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Balance <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Exposure <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Avail. bal. <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              TotalBalance <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Player Balance <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Ref. P/L <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-center">
+                            <span className="flex items-center justify-center">
+                              Status <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">Action</th>
+                        </tr>
           </thead>
           <tbody>
             {currentAgents.map((u, i) => (
@@ -491,7 +505,7 @@ const Agent = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
           <div className="bg-white shadow-lg w-1/2 rounded-2xl">
             <div className="bg-yellow-600 text-white p-2 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
-              <h3 className="text-lg font-bold">Add Agent</h3>
+              <h3 className="text-lg font-bold">Add Super Agent</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-white cursor-pointer hover:text-gray-200"
@@ -622,7 +636,7 @@ const Agent = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white shadow-lg w-1/3 rounded-2xl">
             <div className="bg-yellow-600 text-white p-3 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
-              <h3 className="text-lg font-bold">Edit Agent</h3>
+              <h3 className="text-lg font-bold">Edit Super Agent</h3>
               <button
                 onClick={() => setEditModalOpen(false)}
                 className="text-white hover:text-gray-200 text-xl"

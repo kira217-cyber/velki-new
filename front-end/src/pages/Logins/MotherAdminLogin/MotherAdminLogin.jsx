@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigate } from "react-router";
+import bg from "../../../assets/bg.jpg";
 
 const MotherAdminLogin = () => {
   const [userName, setUserName] = useState("");
@@ -93,13 +94,13 @@ const MotherAdminLogin = () => {
 
   return (
     <div
-      className="min-h-screen flex justify-center items-center bg-cover bg-center relative px-4"
+      className="min-h-screen flex justify-center items-center bg-left md:bg-center relative px-4"
       style={{
-        backgroundImage: "url('https://i.ibb.co.com/bMktQGPC/wp2793078.jpg')",
+        backgroundImage: `url(${bg})`,
       }}
     >
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50"></div>
+      {/* <div className="absolute inset-0 bg-black/50"></div> */}
 
       {/* Main Container */}
       <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 lg:gap-20 p-6 md:p-10 rounded-lg w-full max-w-4xl">
@@ -147,7 +148,7 @@ const MotherAdminLogin = () => {
                 value={validationInput}
                 onChange={(e) => setValidationInput(e.target.value)}
                 placeholder="Validation Code"
-                className="flex-1 w-39.5 px-3 md:px-4 py-2 bg-white text-black rounded-l-md focus:outline-none focus:ring-2 focus:ring-yellow-600 text-sm md:text-base"
+                className="flex-1 w-44.5 px-3 md:px-4 py-2 bg-white text-black rounded-l-md focus:outline-none focus:ring-2 focus:ring-yellow-600 text-sm md:text-base"
               />
               <span className="px-3 md:px-4 py-2 bg-white text-black font-bold border-l border-gray-400 text-sm md:text-base">
                 {code}

@@ -12,13 +12,13 @@ import { toast } from 'react-toastify';
 
 const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
   const { logout } = useContext(AuthContext);
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch();
   const navigate = useNavigate();
 
 
   const handleLogout = () => {
-    dispatch(logout());
-    localStorage.removeItem("users");
+    logout();
+    localStorage.removeItem("user");
     toast.success("Logout successful", {
       appearance: "success",
       autoDismiss: true,
@@ -82,8 +82,8 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
               <IoIosArrowForward className="text-3xl" />
             </Link>
           </li>
-          <li className=" bg-[#d4e0e5] flex items-center justify-between p-3 rounded-2xl">
-            <button onClick={handleLogout} className="flex items-center gap-2">
+          <li onClick={handleLogout} className=" cursor-pointer bg-[#d4e0e5] flex items-center justify-between p-3 rounded-2xl">
+            <button  className="flex items-center gap-2">
               <RiLogoutCircleLine className="text-xl" />
               <span className="text-base whitespace-nowrap">Logout</span>
             </button>

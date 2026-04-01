@@ -4,6 +4,8 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { AuthContext } from "../../../context/AuthContext";
 import { useNavigate } from "react-router";
+import bg from "../../../assets/bg.jpg";
+
 
 const OthersAdminLogin = () => {
   const [userName, setUserName] = useState("");
@@ -72,12 +74,12 @@ const OthersAdminLogin = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex justify-center items-center bg-cover bg-center relative px-4"
-      style={{
-        backgroundImage: "url('https://i.ibb.co.com/bMktQGPC/wp2793078.jpg')",
-      }}
-    >
+   <div
+         className="min-h-screen flex justify-center items-center bg-left md:bg-center relative px-4"
+         style={{
+           backgroundImage: `url(${bg})`,
+         }}
+       >
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/50"></div>
 

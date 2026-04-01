@@ -42,37 +42,37 @@ const Sidebar = () => {
   if (motherAdmin?.role === "MA") {
     downlineDropdown = [
       { name: "Mother Admin", path: `/${"ma"}/mother-admin` },
-      { name: "Sub Admin", path: `/${"ma"}/sub-admin` },
-      { name: "Master", path: `/${"ma"}/master` },
-      { name: "Agent", path: `/${"ma"}/agent` },
-      { name: "Sub Agent", path: `/${"ma"}/sub-agent` },
+      { name: "Senior Sub Admin", path: `/${"ma"}/sub-admin` },
+      { name: "Sub Admin", path: `/${"ma"}/master` },
+      { name: "Super Agent", path: `/${"ma"}/agent` },
+      { name: "Master Agent", path: `/${"ma"}/sub-agent` },
       { name: "User", path: `/${"ma"}/users` },
     ];
   } else if (motherAdmin?.role === "SA") {
     downlineDropdown = [
-      // { name: "Sub Admin", path: `/${"sa"}/sub-admin` },
-      { name: "Master", path: `/${"sa"}/master` },
-      // { name: "Agent", path: `/${"sa"}/agent` },
-      // { name: "Sub Agent", path: `/${"sa"}/sub-agent` },
-      // { name: "User", path: `/${"sa"}/users` },
+      // { name: "Senior Sub Admin", path: `/${"ma"}/sub-admin` },
+      { name: "Sub Admin", path: `/${"ma"}/master` },
+      { name: "Super Agent", path: `/${"ma"}/agent` },
+      { name: "Master Agent", path: `/${"ma"}/sub-agent` },
+      { name: "User", path: `/${"ma"}/users` },
     ];
   } else if (motherAdmin?.role === "MT") {
     downlineDropdown = [
-      // { name: "Master", path: `/${"mt"}/master` },
-      { name: "Agent", path: `/${"mt"}/agent` },
-      // { name: "Sub Agent", path: `/${"mt"}/sub-agent` },
-      // { name: "User", path: `/${"mt"}/users` },
+      //  { name: "Sub Admin", path: `/${"ma"}/master` },
+      { name: "Super Agent", path: `/${"ma"}/agent` },
+      { name: "Master Agent", path: `/${"ma"}/sub-agent` },
+      { name: "User", path: `/${"ma"}/users` },
     ];
   } else if (motherAdmin?.role === "AG") {
     downlineDropdown = [
-      // { name: "Agent", path: `/${"ag"}/agent` },
-      { name: "Sub Agent", path: `/${"ag"}/sub-agent` },
-      // { name: "User", path: `/${"ag"}/users` },
+      // { name: "Super Agent", path: `/${"ma"}/agent` },
+      { name: "Master Agent", path: `/${"ma"}/sub-agent` },
+      { name: "User", path: `/${"ma"}/users` },
     ];
   } else if (motherAdmin?.role === "SG") {
     downlineDropdown = [
-      // { name: "Sub Agent", path: `/${"sg"}/sub-agent` },
-      { name: "User", path: `/${"sg"}/users` },
+      // { name: "Master Agent", path: `/${"ma"}/sub-agent` },
+      { name: "User", path: `/${"ma"}/users` },
     ];
   } else if (motherAdmin?.role === "US") {
     downlineDropdown = [{ name: "User", path: `/${"us"}/users` }];
@@ -340,7 +340,7 @@ const Sidebar = () => {
               <span className="font-bold py-1 px-2 bg-gray-700 text-[12px]">
                 Main
               </span>
-              <span className="">{balance}</span>
+              <span>{Number(balance).toFixed(2)}</span>
             </div>
 
             <button

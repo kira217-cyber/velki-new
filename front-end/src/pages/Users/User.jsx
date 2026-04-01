@@ -324,31 +324,45 @@ const Users = () => {
         <table className="w-full border-collapse">
           <thead className="bg-[#1f3349] text-white">
             <tr>
-              <th className="p-2 text-left">Account</th>
-              <th className="p-2 text-right">Credit Ref.</th>
-              <th className="p-2 text-right">
-                Balance <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Exposure <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Avail. bal. <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                TotalBalance <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Player Balance <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">
-                Ref. P/L <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-center">
-                Status <LuArrowUpDown />
-              </th>
-              <th className="p-2 text-right">Action</th>
-            </tr>
+                          <th className="p-2 text-left">Account</th>
+                          <th className="p-2 text-right">Credit Ref.</th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Balance <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Exposure <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Avail. bal. <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              TotalBalance <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Player Balance <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">
+                            <span className="flex items-center justify-center">
+                              Ref. P/L <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-center">
+                            <span className="flex items-center justify-center">
+                              Status <LuArrowUpDown />
+                            </span>
+                          </th>
+                          <th className="p-2 text-right">Action</th>
+                        </tr>
           </thead>
           <tbody>
             {currentUsers.map((u, i) => (

@@ -46,28 +46,28 @@ const MotherAdminDashboard = () => {
         </div>
 
         <div className="flex-1 px-4 py-3 border-r min-w-[200px]">
-          <p className="text-gray-600 text-sm">Total Sub Admin Balance</p>
+          <p className="text-gray-600 text-sm">Total Senior Sub Admin Balance</p>
           <h2 className="font-extrabold text-lg text-black">
             PBU {summary.subAdminBalance.toLocaleString()}
           </h2>
         </div>
 
         <div className="flex-1 px-4 py-3 border-r min-w-[200px]">
-          <p className="text-gray-600 text-sm">Total Master Balance</p>
+          <p className="text-gray-600 text-sm">Total Sub Admin Balance</p>
           <h2 className="font-extrabold text-lg text-black">
             PBU {summary.masterBalance.toLocaleString()}
           </h2>
         </div>
 
         <div className="flex-1 px-4 py-3 border-r min-w-[200px]">
-          <p className="text-gray-600 text-sm">Total Agent Balance</p>
+          <p className="text-gray-600 text-sm">Total Super Agent Balance</p>
           <h2 className="font-extrabold text-lg text-black">
             PBU {summary.agentBalance.toLocaleString()}
           </h2>
         </div>
 
         <div className="flex-1 px-4 py-3 border-r min-w-[200px]">
-          <p className="text-gray-600 text-sm">Total Sub Agent Balance</p>
+          <p className="text-gray-600 text-sm">Total Master Agent Balance</p>
           <h2 className="font-extrabold text-lg text-black">
             PBU {summary.subAgentBalance.toLocaleString()}
           </h2>

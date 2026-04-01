@@ -99,7 +99,7 @@ const MainLayout = () => {
       <div className="w-full md:w-[60%] lg:w-[40%] xl:w-[30%] bg-[#eef6fb] overflow-y-auto">
         <Navbar />
         <Outlet />
-        <Footer />
+        {/* <Footer /> */}
       </div>
       <div className="hidden lg:block md:w-[20%] w-[30%]"></div>
     </div>

@@ -30,7 +30,7 @@ router.get("/:adminId", async (req, res) => {
       mainBalance: format(mainAdmin.balance),
 
       subAdminBalance: format(sumByRole("SA")),
-      masterBalance: format(sumByRole("MA")),
+      masterBalance: format(sumByRole("MT")),
       agentBalance: format(sumByRole("AG")),
       subAgentBalance: format(sumByRole("SAG")),
       userBalance: format(sumByRole("US")),

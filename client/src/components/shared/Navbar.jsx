@@ -138,7 +138,7 @@ const Navbar = () => {
               />
             )}
             <Link to="/">
-              <img className="w-[84px] h-[26px]" src={logoUrl} alt="Logo" />
+              <img className="w-[100px] h-[40px]" src={logoUrl} alt="Logo" />
             </Link>
           </div>
 

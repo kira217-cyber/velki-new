@@ -35,7 +35,7 @@ const Footer = () => {
           <FaFacebook className="text-4xl" />
         </Link>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      {/* <div className="flex flex-wrap items-center justify-center gap-2">
         <Link to="/privacy-policy" className="border-r border-slate-400 px-3">
           Privacy Policy
         </Link>
@@ -54,7 +54,7 @@ const Footer = () => {
       </div>
       <p className="text-[#6F8898] text-sm text-center">
         © 2025 Oracle Technology LLC কপিরাইট। সমস্ত অধিকার সংরক্ষিত |
-      </p>
+      </p> */}
     </div>
   );
 };

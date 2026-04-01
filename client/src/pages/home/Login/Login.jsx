@@ -1,10 +1,5 @@
 import { useForm } from "react-hook-form";
-import {
-  FaEye,
-  FaEyeSlash,
-  FaUser,
-  FaRedo,
-} from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaUser, FaRedo, FaArrowLeft } from "react-icons/fa";
 import { FaShield } from "react-icons/fa6";
 import { IoIosUnlock } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
@@ -13,18 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AuthContext } from "@/context/AuthContext";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 
 const Login = () => {
   const { user, setUser, loading, setLoading } = useContext(AuthContext);
   const [showPassword, setShowPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [loginImage, setLoginImage] = useState("");
-  const [signupLink, setSignupLink] = useState(""); // 👈 নতুন স্টেট
+  const [signupLink, setSignupLink] = useState("");
   const navigate = useNavigate();
   const toastShownRef = useRef(false);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user && !toastShownRef.current) {
       toastShownRef.current = true;
@@ -32,7 +26,6 @@ const Login = () => {
     }
   }, [user, navigate]);
 
-  // Generate random verification code
   const generateVerificationCode = () => {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setVerificationCode(code);
@@ -42,25 +35,26 @@ const Login = () => {
     generateVerificationCode();
   }, []);
 
-  // Fetch login image AND signup link from navbar settings
   const fetchLoginData = async () => {
     try {
-      // লগিন ইমেজ ফেচ
-      const imgRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/login-image`);
+      const imgRes = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/login-image`,
+      );
       if (imgRes.data && imgRes.data.loginImageUrl) {
         setLoginImage(imgRes.data.loginImageUrl);
       }
 
-      // navbar settings থেকে signupLink ফেচ (যেটা Navbar-এও ব্যবহার হয়)
-      const navRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/navbar`);
+      const navRes = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/navbar`,
+      );
       if (navRes.data && navRes.data.signupLink) {
         setSignupLink(navRes.data.signupLink.trim());
       } else {
-        setSignupLink("/signup"); // ডিফল্ট ফলব্যাক
+        setSignupLink("/signup");
       }
     } catch (err) {
       console.error("Error fetching login data:", err);
-      setSignupLink("/signup"); // এরর হলেও ডিফল্ট রাখো
+      setSignupLink("/signup");
     }
   };
 
@@ -68,15 +62,15 @@ const Login = () => {
     fetchLoginData();
   }, []);
 
-  // Helper to get full image URL
   const getImageUrl = (img) => {
-    if (!img) return "/placeholder.png";
+    if (!img) return "";
     if (img.startsWith("http")) return img;
-    const cleanImg = img.startsWith("/uploads/") ? img.replace("/uploads/", "") : img;
+    const cleanImg = img.startsWith("/uploads/")
+      ? img.replace("/uploads/", "")
+      : img;
     return `${import.meta.env.VITE_API_URL}/uploads/${cleanImg}`;
   };
 
-  // Handle image click → redirect to signup link
   const handleImageClick = () => {
     if (!signupLink) {
       navigate("/signup");
@@ -91,7 +85,6 @@ const Login = () => {
     }
   };
 
-  // React Hook Form
   const {
     register,
     handleSubmit,
@@ -103,30 +96,55 @@ const Login = () => {
   const watchInputCode = watch("inputCode", "");
   const isLoginDisabled = !(watchInputCode === verificationCode);
 
-  // Login submit
+  // ✅ LOGIN WITH STATUS CHECK
   const onSubmit = async (data) => {
     const { username, password } = data;
     try {
       setLoading(true);
+
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/admins/user-login`,
         {
           userName: username,
           password: password,
-        }
+        },
       );
 
       const { user: userData } = res.data;
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
-      toast.success("Login successful");
 
-      if (userData.role === "MA") navigate("/ma/mother-admin");
-      else if (userData.role === "SA") navigate("/sa/sub-admin");
-      else navigate("/");
+      // 🔥 STATUS CHECK
+      if (userData.status === "Suspend") {
+        toast.error("Your account is suspended");
+        setLoading(false); // ✅ FIX
+        return;
+      }
+
+      if (userData.status === "Locked") {
+        toast.error("Your account is locked");
+        setLoading(false); // ✅ FIX
+        return;
+      }
+
+      // ✅ Only Active users can login
+      if (userData.status === "Active") {
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        toast.success("Login successful");
+
+        setTimeout(() => {
+          if (userData.role === "MA") navigate("/ma/mother-admin");
+          else if (userData.role === "SA") navigate("/sa/sub-admin");
+          else navigate("/");
+        }, 1200);
+      } else {
+        toast.error("Unauthorized access");
+        setLoading(false); // ✅ FIX
+      }
     } catch (error) {
       console.error("Login Error:", error);
-      const msg = error.response?.data?.message || "Invalid username or password";
+      const msg =
+        error.response?.data?.message || "Invalid username or password";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -134,8 +152,20 @@ const Login = () => {
   };
 
   return (
-    <div className="bg-white min-h-screen flex flex-col">
-      {/* Clickable Full Width Banner Image */}
+    <div className="bg-white min-h-screen flex flex-col relative">
+      <ToastContainer position="top-center" autoClose={2000} />
+
+      {/* 🔙 Back Button */}
+      <div className="absolute top-4 left-0 w-full z-20 px-4">
+        <button
+          onClick={() => navigate("/")}
+          className="bg-white/90 backdrop-blur-md p-2 rounded-full shadow-md hover:bg-gray-100 transition"
+        >
+          <FaArrowLeft className="text-xl text-black" />
+        </button>
+      </div>
+
+      {/* Banner */}
       <div
         className="relative w-full h-[50vh] md:h-[60vh] cursor-pointer overflow-hidden"
         onClick={handleImageClick}
@@ -145,12 +175,11 @@ const Login = () => {
           alt="Click to Sign Up"
           className="w-full h-full object-cover"
         />
-        {/* Optional: subtle overlay to indicate clickable */}
         <div className="absolute inset-0 bg-black opacity-0 hover:opacity-10 transition-opacity"></div>
       </div>
 
-      {/* Login Form Card */}
-      <div className="w-full max-w-md mx-auto -mt-10 relative z-10 bg-white rounded-t-3xl shadow-2xl px-6 pt-10 pb-8">
+      {/* Form */}
+      <div className="w-full max-w-full mx-auto -mt-12 relative z-10 bg-white rounded-t-xl shadow-2xl px-10 pt-10 pb-8">
         <form onSubmit={handleSubmit(onSubmit)}>
           <h2 className="uppercase text-3xl font-bold text-center text-black mb-8">
             LOGIN
@@ -165,7 +194,11 @@ const Login = () => {
               placeholder="Username"
               className="pl-12 h-14 rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
             />
-            {errors.username && <p className="text-red-500 text-sm mt-1 ml-4">{errors.username.message}</p>}
+            {errors.username && (
+              <p className="text-red-500 text-sm mt-1 ml-4">
+                {errors.username.message}
+              </p>
+            )}
           </div>
 
           {/* Password */}
@@ -175,7 +208,10 @@ const Login = () => {
               type={showPassword ? "text" : "password"}
               {...register("password", {
                 required: "Password is required",
-                minLength: { value: 6, message: "Password must be at least 6 characters" },
+                minLength: {
+                  value: 6,
+                  message: "Password must be at least 6 characters",
+                },
               })}
               placeholder="Password"
               className="pl-12 pr-12 h-14 rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
@@ -186,20 +222,28 @@ const Login = () => {
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </div>
-            {errors.password && <p className="text-red-500 text-sm mt-1 ml-4">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1 ml-4">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
-          {/* Verification Code */}
+          {/* Verification */}
           <div className="relative mb-8">
             <FaShield className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-600" />
             <Input
               type="text"
-              {...register("inputCode", { required: "Validation code is required" })}
+              {...register("inputCode", {
+                required: "Validation code is required",
+              })}
               placeholder="Validation Code"
               className="pl-12 pr-20 h-14 rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
             />
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              <span className="font-bold text-3xl text-black">{verificationCode}</span>
+              <span className="font-bold text-3xl text-black">
+                {verificationCode}
+              </span>
               <FaRedo
                 className="text-2xl cursor-pointer text-gray-600 hover:text-black"
                 onClick={() => {
@@ -208,10 +252,14 @@ const Login = () => {
                 }}
               />
             </div>
-            {errors.inputCode && <p className="text-red-500 text-sm mt-1 ml-4">{errors.inputCode.message}</p>}
+            {errors.inputCode && (
+              <p className="text-red-500 text-sm mt-1 ml-4">
+                {errors.inputCode.message}
+              </p>
+            )}
           </div>
 
-          {/* Login Button */}
+          {/* Button */}
           <Button
             type="submit"
             disabled={isLoginDisabled || loading}
