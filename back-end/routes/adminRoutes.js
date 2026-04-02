@@ -3,28 +3,93 @@ import Admin from "../models/Admin.js";
 import Transaction from "../models/Transaction.js"; // Import Transaction model
 const router = express.Router();
 
-// Create admin
+
+// Create admin - POST /api/admins
 router.post("/", async (req, res) => {
   try {
-    // expect req.body to possibly include createdBy (creator's _id)
-    const payload = req.body;
+    const {
+      email,
+      username,
+      password,
+      confirmPassword,
+      firstName = "",
+      lastName = "",
+      phone = "",
+      timeZone = "Asia/Dhaka",
+      role,           // Client থেকে আসবে (MA, SA, MT, AG, SG, US)
+      createdBy,
+    } = req.body;
 
-    // Ensure required fields are present (simple validation)
-    if (!payload.username || !payload.password || !payload.firstName) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields" });
+    // Required validation
+    if (!email || !username || !password || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, Username, Password and Confirm Password are required",
+      });
     }
 
-    const newAdmin = new Admin(payload);
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    // Role Label Mapping (Backend এ রাখা হলো)
+    const roleLabel = {
+      MA: "Mother Admin",
+      SA: "Senior Sub Admin",
+      MT: "Sub Admin",
+      AG: "Super Agent",
+      SG: "Master Agent",
+      US: "User",
+    };
+
+    // Allowed roles
+    const allowedRoles = ["MA", "SA", "MT", "AG", "SG", "US"];
+    const finalRole = allowedRoles.includes(role) ? role : "US";
+
+    // Duplicate check
+    const existing = await Admin.findOne({
+      $or: [
+        { email: email.trim().toLowerCase() },
+        { username: username.trim() }
+      ]
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Email or Username already exists",
+      });
+    }
+
+    const newAdmin = new Admin({
+      email: email.trim().toLowerCase(),
+      username: username.trim(),
+      password: password.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone.trim(),
+      timeZone,
+      role: finalRole,
+      createdBy: createdBy || null,
+    });
+
     await newAdmin.save();
+
+    // Success response with role label
     res.status(201).json({
       success: true,
-      message: "Admin added successfully!",
-      admin: newAdmin,
+      message: `${roleLabel[finalRole] || finalRole} added successfully!`,
+      admin: {
+        ...newAdmin.toObject(),
+        roleLabel: roleLabel[finalRole]   // ← এখানে লেবেলও পাঠানো হচ্ছে
+      },
     });
+
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Create admin error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to add admin",
@@ -34,7 +99,6 @@ router.post("/", async (req, res) => {
 });
 
 // Register User
-
 router.post("/user", async (req, res) => {
   try {
     const payload = req.body;
@@ -653,17 +717,27 @@ router.post("/change-status", async (req, res) => {
 router.put("/:id/update", async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, newPassword, currentPassword } = req.body;
 
-    // Validation
+    const {
+      email,
+      username,
+      newPassword,
+      currentPassword,
+      firstName,
+      lastName,
+      phone,
+      timeZone,
+    } = req.body;
+
     if (!currentPassword) {
       return res.status(400).json({
         success: false,
-        message: "Current password is required for verification",
+        message: "Current password required",
       });
     }
 
     const admin = await Admin.findById(id);
+
     if (!admin) {
       return res.status(404).json({
         success: false,
@@ -671,7 +745,7 @@ router.put("/:id/update", async (req, res) => {
       });
     }
 
-    // Verify requester's password (plain text as you requested)
+    // ✅ password verify
     if (admin.password !== currentPassword) {
       return res.status(401).json({
         success: false,
@@ -681,19 +755,41 @@ router.put("/:id/update", async (req, res) => {
 
     let isUpdated = false;
 
-    // Update username if provided and different
-    if (username && username.trim() !== "" && username !== admin.username) {
-      admin.username = username.trim();
+    if (email && email !== admin.email) {
+      admin.email = email;
       isUpdated = true;
     }
 
-    // Update password if provided and different
-    if (newPassword && newPassword.trim() !== "" && newPassword !== admin.password) {
-      admin.password = newPassword.trim();   // Plain text as per your requirement
+    if (username && username !== admin.username) {
+      admin.username = username;
       isUpdated = true;
     }
 
-    // If nothing was changed
+    if (newPassword && newPassword !== admin.password) {
+      admin.password = newPassword;
+      isUpdated = true;
+    }
+
+    if (firstName !== undefined) {
+      admin.firstName = firstName || "";
+      isUpdated = true;
+    }
+
+    if (lastName !== undefined) {
+      admin.lastName = lastName || "";
+      isUpdated = true;
+    }
+
+    if (phone !== undefined) {
+      admin.phone = phone || "";
+      isUpdated = true;
+    }
+
+    if (timeZone) {
+      admin.timeZone = timeZone;
+      isUpdated = true;
+    }
+
     if (!isUpdated) {
       return res.status(400).json({
         success: false,
@@ -703,20 +799,14 @@ router.put("/:id/update", async (req, res) => {
 
     await admin.save();
 
-    res.status(200).json({
+    res.json({
       success: true,
-      message: "Mother Admin updated successfully",
-      admin: {
-        _id: admin._id,
-        username: admin.username,
-        role: admin.role,
-      },
+      message: "Admin updated successfully",
     });
   } catch (error) {
-    console.error("Update admin error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to update admin",
+      message: "Failed to update",
       error: error.message,
     });
   }

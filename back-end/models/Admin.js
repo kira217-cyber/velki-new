@@ -1,18 +1,24 @@
 // models/Admin.js
 import mongoose from "mongoose";
-import gameHistory from "./GameHistory.js"
+import gameHistory from "./GameHistory.js";
 
 const adminSchema = new mongoose.Schema(
   {
+    email: { type: String, unique: true }, // ✅ NEW REQUIRED
+
     username: { type: String, required: true, unique: true },
     role: { type: String, default: "US" },
+
     password: { type: String, required: true },
-    firstName: { type: String, required: true },
+
+    firstName: { type: String, default: "" }, // ✅ optional
+    lastName: { type: String, default: "" },  // ✅ optional
+    phone: { type: String, default: "" },     // ✅ optional
+
     reffer: { type: String, default: "" },
-    lastName: { type: String, required: true },
-    phone: { type: String, required: true },
-    loginStatus: { type: String, default: "manual" }, // ✅ এই ফিল্ড যোগ করো
-    // financial fields...
+
+    loginStatus: { type: String, default: "manual" },
+
     credit: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
     exposure: { type: Number, default: 0 },
@@ -20,12 +26,13 @@ const adminSchema = new mongoose.Schema(
     totalBal: { type: Number, default: 0 },
     playerBal: { type: Number, default: 0 },
     refPL: { type: Number, default: 0 },
-    gameHistory:[gameHistory],
+
+    gameHistory: [gameHistory],
 
     timeZone: { type: String, default: "Asia/Dhaka" },
+
     status: { type: String, default: "Active" },
 
-    // NEW: who created this admin (nullable)
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",

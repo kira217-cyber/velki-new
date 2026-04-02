@@ -19,13 +19,13 @@ import MotherAdminDashboard from "../../Components/Dashboard/MotherAdminDashboar
 
 const MotherAdmin = () => {
   const [isModalOpen, setIsModalOpen] = useState(false); // Add Mother Admin Modal
-  const [editModalOpen, setEditModalOpen] = useState(false); // Edit Username & Password Modal
+  const [editModalOpen, setEditModalOpen] = useState(false); // Edit Modal
   const [admins, setAdmins] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const adminsPerPage = 20; // Changed to 20 as requested
-
+  const adminsPerPage = 20;
   const [selectedAdminId, setSelectedAdminId] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -38,10 +38,15 @@ const MotherAdmin = () => {
 
   const [editForm, setEditForm] = useState({
     adminId: "",
+    email: "",
     username: "",
     newPassword: "",
     confirmPassword: "",
-    currentPassword: "", // For verification (motherAdmin's password)
+    currentPassword: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    timeZone: "Asia/Dhaka",
   });
 
   const { motherAdmin } = useContext(AuthContext);
@@ -56,8 +61,10 @@ const MotherAdmin = () => {
   ];
 
   const [formData, setFormData] = useState({
+    email: "",
     username: "",
     password: "",
+    confirmPassword: "",
     firstName: "",
     lastName: "",
     phone: "",
@@ -86,9 +93,18 @@ const MotherAdmin = () => {
     fetchAdmins();
   }, []);
 
-  // Add Mother Admin
+  // ==================== ADD MOTHER ADMIN ====================
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.email || !formData.username || !formData.password) {
+      return toast.error("❌ Email, Username and Password are required");
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      return toast.error("❌ Password and Confirm Password do not match");
+    }
+
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/admins`,
@@ -98,12 +114,15 @@ const MotherAdmin = () => {
           createdBy: motherAdmin?._id || null,
         },
       );
+
       if (res.data.success) {
         toast.success("✅ Mother Admin added successfully!");
         setIsModalOpen(false);
         setFormData({
+          email: "",
           username: "",
           password: "",
+          confirmPassword: "",
           firstName: "",
           lastName: "",
           phone: "",
@@ -117,7 +136,89 @@ const MotherAdmin = () => {
     }
   };
 
-  // Pagination
+  // ==================== EDIT MOTHER ADMIN ====================
+  const openEditModal = (admin) => {
+    setEditForm({
+      adminId: admin._id,
+      email: admin.email || "",
+      username: admin.username || "",
+      newPassword: "",
+      confirmPassword: "",
+      currentPassword: "",
+      firstName: admin.firstName || "",
+      lastName: admin.lastName || "",
+      phone: admin.phone || "",
+      timeZone: admin.timeZone || "Asia/Dhaka",
+    });
+    setEditModalOpen(true);
+  };
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+
+    if (
+      editForm.newPassword &&
+      editForm.newPassword !== editForm.confirmPassword
+    ) {
+      return toast.error("❌ New passwords do not match");
+    }
+
+    try {
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/admins/${editForm.adminId}/update`,
+        {
+          email: editForm.email,
+          username: editForm.username,
+          newPassword: editForm.newPassword || undefined,
+          currentPassword: editForm.currentPassword,
+          firstName: editForm.firstName,
+          lastName: editForm.lastName,
+          phone: editForm.phone,
+          timeZone: editForm.timeZone,
+        },
+      );
+
+      if (res.data.success) {
+        toast.success("✅ Mother Admin updated successfully!");
+        setEditModalOpen(false);
+        fetchAdmins();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "❌ Failed to update admin");
+    }
+  };
+
+  // ==================== STATUS CHANGE ====================
+  const handleStatusChange = (e) => {
+    setStatusForm({ ...statusForm, [e.target.name]: e.target.value });
+  };
+
+  const openStatusModal = (adminId) => {
+    setSelectedAdminId(adminId);
+    setStatusForm({ adminId, status: "Active", password: "" });
+    setStatusModalOpen(true);
+  };
+
+  const submitStatusChange = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/admins/change-status`,
+        statusForm,
+      );
+      if (res.data.success) {
+        toast.success("✅ Status changed successfully!");
+        setStatusModalOpen(false);
+        fetchAdmins();
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "❌ Failed to change status",
+      );
+    }
+  };
+
+  // ==================== PAGINATION & TOTALS ====================
   const indexOfLastAdmin = currentPage * adminsPerPage;
   const indexOfFirstAdmin = indexOfLastAdmin - adminsPerPage;
   const currentAdmins = admins.slice(indexOfFirstAdmin, indexOfLastAdmin);
@@ -131,7 +232,6 @@ const MotherAdmin = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
-  // Calculate Totals for Current Page
   const totals = currentAdmins.reduce(
     (acc, u) => {
       acc.credit += u.credit || 0;
@@ -162,78 +262,6 @@ const MotherAdmin = () => {
     { icon: <FaLock />, label: "Block Market" },
   ];
 
-  // Status Change Handlers
-  const handleStatusChange = (e) => {
-    setStatusForm({ ...statusForm, [e.target.name]: e.target.value });
-  };
-
-  const openStatusModal = (adminId) => {
-    setSelectedAdminId(adminId);
-    setStatusForm({ adminId, status: "Active", password: "" });
-    setStatusModalOpen(true);
-  };
-
-  const submitStatusChange = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/admins/change-status`,
-        statusForm,
-      );
-      if (res.data.success) {
-        toast.success("✅ Status changed successfully!");
-        setStatusModalOpen(false);
-        fetchAdmins();
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "❌ Failed to change status",
-      );
-    }
-  };
-
-  // Edit Modal Handlers
-  const openEditModal = (admin) => {
-    setEditForm({
-      adminId: admin._id,
-      username: admin.username,
-      newPassword: "",
-      confirmPassword: "",
-      currentPassword: "",
-    });
-    setEditModalOpen(true);
-  };
-
-  const submitEdit = async (e) => {
-    e.preventDefault();
-
-    if (
-      editForm.newPassword &&
-      editForm.newPassword !== editForm.confirmPassword
-    ) {
-      return toast.error("❌ New passwords do not match");
-    }
-
-    try {
-      const res = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/admins/${editForm.adminId}/update`,
-        {
-          username: editForm.username,
-          newPassword: editForm.newPassword || undefined,
-          currentPassword: editForm.currentPassword,
-        },
-      );
-
-      if (res.data.success) {
-        toast.success("✅ Mother Admin updated successfully!");
-        setEditModalOpen(false);
-        fetchAdmins();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "❌ Failed to update admin");
-    }
-  };
-
   return (
     <div className="p-4 bg-gray-100 min-h-screen">
       {/* Header */}
@@ -252,7 +280,6 @@ const MotherAdmin = () => {
             <option>LOCKED</option>
           </select>
         </div>
-
         <div className="flex items-center space-x-2">
           <button
             className="bg-yellow-50 border border-gray-200 cursor-pointer hover:bg-yellow-100 text-black px-3 py-1 rounded flex items-center space-x-1"
@@ -272,32 +299,6 @@ const MotherAdmin = () => {
 
       {/* Summary Cards */}
       <MotherAdminDashboard />
-      {/* <div className="flex bg-[#f5f6f8] border-b mb-5 overflow-hidden">
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Total Balance</p>
-          <h2 className="font-extrabold text-lg text-black">PBU 00.00</h2>
-        </div>
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Net Exposure</p>
-          <h2 className="font-extrabold text-lg text-yellow-600">
-            PBU (00.00)
-          </h2>
-        </div>
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Balance</p>
-          <h2 className="font-extrabold text-lg text-black">PBU 00.00</h2>
-        </div>
-        <div className="flex-1 px-4 py-3 border-r">
-          <p className="text-gray-600 text-sm">Balance in Downline</p>
-          <h2 className="font-extrabold text-lg text-black">PBU 00.00</h2>
-        </div>
-        <div className="flex-1 px-4 py-3">
-          <p className="text-gray-600 text-sm">Transferable P/L with Upline</p>
-          <h2 className="font-extrabold text-lg text-yellow-600">
-            PBU (00.00)
-          </h2>
-        </div>
-      </div> */}
 
       {/* Main Table */}
       <div className="bg-white rounded shadow overflow-hidden">
@@ -348,9 +349,7 @@ const MotherAdmin = () => {
             {currentAdmins.map((u, i) => (
               <tr
                 key={u._id}
-                className={`border-b text-sm ${
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50"
-                }`}
+                className={`border-b text-sm ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
               >
                 <td className="p-2 flex items-center space-x-1">
                   <span
@@ -423,7 +422,7 @@ const MotherAdmin = () => {
               </tr>
             ))}
 
-            {/* Total Row for Current Page */}
+            {/* Total Row */}
             <tr className="bg-[#FFEDD5] border-t font-semibold">
               <td className="p-2">Total (Page {currentPage})</td>
               <td className="p-2 text-right">
@@ -453,7 +452,7 @@ const MotherAdmin = () => {
           </tbody>
         </table>
 
-        {/* Pagination Controls */}
+        {/* Pagination */}
         <div className="flex items-center justify-center p-3 border-t border-b border-dashed text-sm mt-4">
           <button
             onClick={prevPage}
@@ -474,7 +473,7 @@ const MotherAdmin = () => {
           </button>
         </div>
 
-        {/* Bottom Menu Items */}
+        {/* Bottom Menu */}
         <div className="flex flex-wrap justify-end mr-8 items-center gap-3 py-2 bg-white border-t border-gray-300">
           {menuItems.map((item, index) => (
             <React.Fragment key={index}>
@@ -491,115 +490,145 @@ const MotherAdmin = () => {
 
       {/* ====================== ADD MOTHER ADMIN MODAL ====================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
-          <div className="bg-white shadow-lg w-1/2 rounded-2xl">
-            <div className="bg-yellow-600 text-white p-2 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
-              <h3 className="text-lg font-bold">Add Mother Admin</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="w-[800px] bg-white shadow-lg border">
+            {/* HEADER */}
+            <div className="bg-yellow-500 flex justify-between items-center px-4 py-2">
+              <h2 className="font-bold text-black">Add Mother Admin</h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-white cursor-pointer hover:text-gray-200"
+                className="bg-black cursor-pointer text-yellow-400 w-6 h-6 flex items-center justify-center font-bold"
               >
                 ✕
               </button>
             </div>
-            <div className="bg-black text-white p-2 flex justify-end items-center">
-              <h3 className="text-lg font-bold text-right">Step 1</h3>
+
+            {/* STEP BAR */}
+            <div className="bg-black text-white text-right px-4 py-1 text-sm font-semibold">
+              STEP 1
             </div>
-            <div className="p-4">
-              <h4 className="text-lg font-bold mb-2">Personal Information</h4>
-              <form
-                className="max-w-4xl mx-auto bg-white p-8 rounded-lg"
-                onSubmit={handleSubmit}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-4 border-b border-gray-300 mb-36">
-                  <div>
-                    <div className="mb-4 flex justify-center items-center gap-4 text-nowrap">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Username
+
+            {/* BODY */}
+            <div className="bg-gray-200 p-6 min-h-[400px] flex flex-col justify-between">
+              <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                <div>
+                  <h3 className="font-semibold text-lg mb-4">
+                    Personal Information
+                  </h3>
+
+                  {/* GRID */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* Email */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">
+                        Email <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        placeholder="Enter Email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                        required
+                      />
+                    </div>
+
+                    {/* Username */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">
+                        Username <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="text"
                         name="username"
+                        placeholder="Enter username"
                         value={formData.username}
                         onChange={handleChange}
-                        placeholder="Enter username"
-                        className="w-full ml-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
+                        className="flex-1 border px-2 py-1 bg-white"
                         required
                       />
-                      <span className="text-red-600">*</span>
                     </div>
-                    <div className="mb-4 flex justify-center items-center gap-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Password
+
+                    {/* Password */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">
+                        Password <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="password"
                         name="password"
+                        placeholder="Enter Password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Enter password"
-                        className="w-full ml-2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
+                        className="flex-1 border px-2 py-1 bg-white"
                         required
                       />
-                      <span className="text-red-600">*</span>
                     </div>
-                    <div className="mb-4 flex justify-center items-center gap-4 text-nowrap">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        First Name
+
+                    {/* Confirm Password */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">
+                        Confirm Password <span className="text-red-600">*</span>
                       </label>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        placeholder="Confirm Password"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                        required
+                      />
+                    </div>
+
+                    {/* First Name */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">First Name</label>
                       <input
                         type="text"
                         name="firstName"
+                        placeholder="Enter FirstName"
                         value={formData.firstName}
                         onChange={handleChange}
-                        placeholder="Enter first name"
-                        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
-                        required
+                        className="flex-1 border px-2 py-1 bg-white"
                       />
-                      <span className="text-red-600">*</span>
                     </div>
-                  </div>
-                  <div>
-                    <div className="mb-4 flex justify-center items-center gap-4 text-nowrap">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Last Name
-                      </label>
+
+                    {/* Last Name */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">Last Name</label>
                       <input
                         type="text"
                         name="lastName"
+                        placeholder="Enter LastName"
                         value={formData.lastName}
                         onChange={handleChange}
-                        placeholder="Enter last name"
-                        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
-                        required
+                        className="flex-1 border px-2 py-1 bg-white"
                       />
-                      <span className="text-red-600">*</span>
                     </div>
-                    <div className="mb-4 flex justify-center items-center gap-4 text-nowrap">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone
-                      </label>
+
+                    {/* Phone */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">Phone</label>
                       <input
-                        type="tel"
+                        type="text"
                         name="phone"
+                        placeholder="Enter Phone Number"
                         value={formData.phone}
                         onChange={handleChange}
-                        placeholder="Enter phone number"
-                        className="w-full ml-[26px] border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
-                        required
+                        className="flex-1 border px-2 py-1 bg-white"
                       />
-                      <span className="text-red-600">*</span>
                     </div>
-                    <div className="mb-4 flex justify-center items-center gap-4 text-nowrap">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        TimeZone
-                      </label>
+
+                    {/* TimeZone (ADDED but styled same) */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">TimeZone</label>
                       <select
                         name="timeZone"
                         value={formData.timeZone}
                         onChange={handleChange}
-                        className="w-full ml-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
-                        required
+                        className="flex-1 border px-2 py-1 bg-white"
                       >
                         {timeZones.map((zone) => (
                           <option key={zone} value={zone}>
@@ -607,14 +636,15 @@ const MotherAdmin = () => {
                           </option>
                         ))}
                       </select>
-                      <span className="text-red-600">*</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end">
+
+                {/* FOOTER BUTTON */}
+                <div className="flex justify-end mt-10 border-t pt-4">
                   <button
                     type="submit"
-                    className="bg-yellow-600 cursor-pointer text-white font-bold px-6 py-2 rounded hover:bg-yellow-700 transition"
+                    className="bg-yellow-500 cursor-pointer hover:bg-yellow-600 px-6 py-2 text-black font-semibold border"
                   >
                     Create
                   </button>
@@ -628,229 +658,350 @@ const MotherAdmin = () => {
       {/* ====================== EDIT MOTHER ADMIN MODAL ====================== */}
       {editModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white shadow-lg w-1/3 rounded-2xl">
-            <div className="bg-yellow-600 text-white p-3 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
-              <h3 className="text-lg font-bold">Edit Mother Admin</h3>
+          <div className="w-[800px] bg-white shadow-lg border">
+            {/* HEADER */}
+            <div className="bg-yellow-500 flex justify-between items-center px-4 py-2">
+              <h2 className="font-bold text-black">Edit Mother Admin</h2>
               <button
                 onClick={() => setEditModalOpen(false)}
-                className="text-white hover:text-gray-200 text-xl"
+                className="bg-black cursor-pointer text-yellow-400 w-6 h-6 flex items-center justify-center font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={submitEdit} className="p-6 space-y-4">
-              {/* Username Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  name="username"
-                  value={editForm.username}
-                  onChange={handleEditChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  required
-                />
-              </div>
+            {/* STEP BAR */}
+            <div className="bg-black text-white text-right px-4 py-1 text-sm font-semibold">
+              STEP 1
+            </div>
 
-              {/* New Password Field with Toggle */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  New Password (leave blank if not changing)
-                </label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    name="newPassword"
-                    value={editForm.newPassword}
-                    onChange={handleEditChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    placeholder="Enter new password"
-                  />
+            {/* BODY */}
+            <div className="bg-gray-200 p-6 min-h-[500px] flex flex-col justify-between">
+              <form onSubmit={submitEdit} className="flex flex-col h-full">
+                {/* PERSONAL INFO */}
+                <div>
+                  <h3 className="font-semibold text-lg mb-4">
+                    Personal Information
+                  </h3>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* Email */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">Email</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={editForm.email}
+                        onChange={handleEditChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                      />
+                    </div>
+
+                    {/* Username */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">Username</label>
+                      <input
+                        type="text"
+                        name="username"
+                        value={editForm.username}
+                        onChange={handleEditChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                      />
+                    </div>
+
+                    {/* First Name */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">First Name</label>
+                      <input
+                        type="text"
+                        name="firstName"
+                        value={editForm.firstName}
+                        onChange={handleEditChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                      />
+                    </div>
+
+                    {/* Last Name */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">Last Name</label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={editForm.lastName}
+                        onChange={handleEditChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">Phone</label>
+                      <input
+                        type="text"
+                        name="phone"
+                        value={editForm.phone}
+                        onChange={handleEditChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                      />
+                    </div>
+
+                    {/* TimeZone */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">TimeZone</label>
+                      <select
+                        name="timeZone"
+                        value={editForm.timeZone}
+                        onChange={handleEditChange}
+                        className="flex-1 border px-2 py-1 bg-white"
+                      >
+                        {timeZones.map((zone) => (
+                          <option key={zone} value={zone}>
+                            {zone}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PASSWORD SECTION */}
+                <div className="mt-6 border-t pt-4">
+                  <h4 className="font-semibold mb-3">
+                    Change Password (Optional)
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* New Password */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">New Password</label>
+                      <div className="relative flex-1">
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          name="newPassword"
+                          value={editForm.newPassword}
+                          onChange={handleEditChange}
+                          className="w-full border px-2 py-1 pr-8 bg-white"
+                          placeholder="Optional"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                        >
+                          {showNewPassword ? (
+                            <FaEyeSlash size={16} />
+                          ) : (
+                            <FaEye size={16} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div className="flex items-center gap-2">
+                      <label className="w-32 text-right">
+                        Confirm Password
+                      </label>
+                      <div className="relative flex-1">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          name="confirmPassword"
+                          value={editForm.confirmPassword}
+                          onChange={handleEditChange}
+                          className="w-full border px-2 py-1 pr-8 bg-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                        >
+                          {showConfirmPassword ? (
+                            <FaEyeSlash size={16} />
+                          ) : (
+                            <FaEye size={16} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CURRENT PASSWORD */}
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 text-sm">
+                    <label className="w-32 text-right">
+                      Current Password <span className="text-red-600">*</span>
+                    </label>
+
+                    <div className="relative flex-1">
+                      <input
+                        type={showCurrentPassword ? "text" : "password"}
+                        name="currentPassword"
+                        value={editForm.currentPassword}
+                        onChange={handleEditChange}
+                        className="w-full border px-2 py-1 pr-8 bg-white"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowCurrentPassword(!showCurrentPassword)
+                        }
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                      >
+                        {showCurrentPassword ? (
+                          <FaEyeSlash size={16} />
+                        ) : (
+                          <FaEye size={16} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-600 mt-1 ml-32">
+                    Enter your password to confirm update
+                  </p>
+                </div>
+
+                {/* FOOTER */}
+                <div className="flex justify-end mt-8 border-t pt-4 gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => setEditModalOpen(false)}
+                    className="px-5 cursor-pointer py-1 border"
                   >
-                    {showNewPassword ? (
-                      <FaEyeSlash size={18} />
-                    ) : (
-                      <FaEye size={18} />
-                    )}
+                    Cancel
                   </button>
-                </div>
-              </div>
-
-              {/* Confirm New Password Field with Toggle */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={editForm.confirmPassword}
-                    onChange={handleEditChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    placeholder="Confirm new password"
-                  />
                   <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    type="submit"
+                    className="bg-yellow-500 cursor-pointer px-6 py-1 font-semibold border"
                   >
-                    {showConfirmPassword ? (
-                      <FaEyeSlash size={18} />
-                    ) : (
-                      <FaEye size={18} />
-                    )}
+                    Update
                   </button>
                 </div>
-              </div>
-
-              {/* Current Password Field with Toggle (Verification) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Your Current Password (Verification)
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPassword ? "text" : "password"}
-                    name="currentPassword"
-                    value={editForm.currentPassword}
-                    onChange={handleEditChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showCurrentPassword ? (
-                      <FaEyeSlash size={18} />
-                    ) : (
-                      <FaEye size={18} />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter your (Mother Admin) password to authorize this change
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setEditModalOpen(false)}
-                  className="px-5 py-2 border border-gray-300 rounded hover:bg-gray-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 transition"
-                >
-                  Update
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* ====================== CHANGE STATUS MODAL ====================== */}
       {statusModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-xl">
-          <div className="bg-white shadow-lg w-1/3 rounded-2xl">
-            <div className="bg-yellow-600 text-white p-2 flex justify-between items-center rounded-tl-xl rounded-tr-xl">
-              <h3 className="text-lg font-bold">Change Status</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="w-[600px] bg-white shadow-lg border">
+            {/* HEADER */}
+            <div className="bg-yellow-500 flex justify-between items-center px-4 py-2">
+              <h2 className="font-bold text-black">Change Status</h2>
               <button
                 onClick={() => setStatusModalOpen(false)}
-                className="text-white cursor-pointer hover:text-gray-200"
+                className="bg-black cursor-pointer text-yellow-400 w-6 h-6 flex items-center justify-center font-bold"
               >
                 ✕
               </button>
             </div>
-            <form onSubmit={submitStatusChange} className="p-4">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  AD
-                </label>
-                <input
-                  type="text"
-                  value={selectedAdminId || ""}
-                  disabled
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
-                />
-              </div>
-              <div className="mb-4 flex justify-center space-x-4">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStatusForm({ ...statusForm, status: "Active" })
-                  }
-                  className={`p-2 border rounded cursor-pointer ${
-                    statusForm.status === "Active"
-                      ? "bg-gray-300"
-                      : "bg-yellow-50"
-                  }`}
-                >
-                  <span className="text-green-600">✔</span> Active
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStatusForm({ ...statusForm, status: "Suspend" })
-                  }
-                  className={`p-2 border rounded cursor-pointer ${
-                    statusForm.status === "Suspend"
-                      ? "bg-gray-300"
-                      : "bg-yellow-50"
-                  }`}
-                >
-                  <span className="text-red-600">✖</span> Suspend
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStatusForm({ ...statusForm, status: "Locked" })
-                  }
-                  className={`p-2 border rounded cursor-pointer ${
-                    statusForm.status === "Locked"
-                      ? "bg-gray-300"
-                      : "bg-yellow-50"
-                  }`}
-                >
-                  <span className="text-gray-600">🔒</span> Locked
-                </button>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={statusForm.password}
-                  onChange={handleStatusChange}
-                  placeholder="Enter password"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:ring-red-200"
-                  required
-                />
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-yellow-600 cursor-pointer text-white px-6 py-2 rounded hover:bg-yellow-700 transition"
-                >
-                  Change
-                </button>
-              </div>
-            </form>
+
+            {/* STEP BAR */}
+            <div className="bg-black text-white text-right px-4 py-1 text-sm font-semibold">
+              STEP 1
+            </div>
+
+            {/* BODY */}
+            <div className="bg-gray-200 p-6 min-h-[250px] flex flex-col justify-between">
+              <form
+                onSubmit={submitStatusChange}
+                className="flex flex-col h-full"
+              >
+                <div className="space-y-4">
+                  {/* ADMIN ID */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <label className="w-32 text-right">Admin ID</label>
+                    <input
+                      type="text"
+                      value={selectedAdminId || ""}
+                      disabled
+                      className="flex-1 border px-2 py-1 bg-gray-100"
+                    />
+                  </div>
+
+                  {/* STATUS BUTTONS */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <label className="w-32 text-right">Status</label>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStatusForm({ ...statusForm, status: "Active" })
+                        }
+                        className={`px-3 py-1 border flex items-center gap-1 ${
+                          statusForm.status === "Active"
+                            ? "bg-gray-300"
+                            : "bg-white"
+                        }`}
+                      >
+                        <span className="text-green-600">✔</span> Active
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStatusForm({ ...statusForm, status: "Suspend" })
+                        }
+                        className={`px-3 py-1 border flex items-center gap-1 ${
+                          statusForm.status === "Suspend"
+                            ? "bg-gray-300"
+                            : "bg-white"
+                        }`}
+                      >
+                        <span className="text-red-600">✖</span> Suspend
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStatusForm({ ...statusForm, status: "Locked" })
+                        }
+                        className={`px-3 py-1 border flex items-center gap-1 ${
+                          statusForm.status === "Locked"
+                            ? "bg-gray-300"
+                            : "bg-white"
+                        }`}
+                      >
+                        <span className="text-gray-600">🔒</span> Locked
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* PASSWORD */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <label className="w-32 text-right">
+                      Password <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={statusForm.password}
+                      onChange={handleStatusChange}
+                      placeholder="Enter password"
+                      className="flex-1 border px-2 py-1 bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* FOOTER */}
+                <div className="flex justify-end mt-6 border-t pt-4">
+                  <button
+                    type="submit"
+                    className="bg-yellow-500 cursor-pointer px-6 py-1 font-semibold border"
+                  >
+                    Change Status
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

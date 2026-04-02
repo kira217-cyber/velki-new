@@ -78,12 +78,27 @@ const Sidebar = () => {
     downlineDropdown = [{ name: "User", path: `/${"us"}/users` }];
   }
 
+  const handleLogout = () => {
+    try {
+      // 🔹 role based redirect
+      logout();
+      if (motherAdmin?.role === "MA") {
+        navigate("/ad");
+      } else {
+        navigate("/ag");
+      }
+    } catch (error) {
+      console.error("Logout Error:", error);
+      navigate("/ag");
+    }
+  };
+
   const roleLabel = {
     MA: "Mother Admin",
-    SA: "Sub Admin",
-    MT: "Master",
-    AG: "Agent",
-    SG: "Sub Agent",
+    SA: "Senior Sub Admin",
+    MT: "Sub Admin",
+    AG: "Super Agent",
+    SG: "Master Agent",
     US: "User",
   };
 
@@ -356,7 +371,7 @@ const Sidebar = () => {
               className="flex items-center justify-center gap-2 hover:cursor-pointer"
             >
               <span
-                onClick={() => logout()}
+                onClick={handleLogout}
                 className="font-bold flex gap-2 py-2 px-4 bg-gray-700 text-[12px] hover:bg-yellow-500"
               >
                 Logout <TbLogout size={22} />
