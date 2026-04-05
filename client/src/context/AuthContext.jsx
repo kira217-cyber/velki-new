@@ -4,17 +4,17 @@ import { createContext, useState, useEffect } from "react";
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // user initially null
-
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(0);
-  const [logo, setLogo] = useState(null); // নতুন: লোগো পাথ স্টোর
+  const [logo, setLogo] = useState(null);
 
-  // --- ✅ Balance Fetch Function
+  // Fetch Balance
   const fetchBalance = async (userId) => {
+    if (!userId) return;
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/admins/${userId}`
+        `${import.meta.env.VITE_API_URL}/api/admins/${userId}`,
       );
       setBalance(response.data.balance || 0);
     } catch (error) {
@@ -22,42 +22,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // --- ✅ Logo Fetch Function
+  // Fetch Logo
   const fetchLogo = async () => {
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/logo`
+        `${import.meta.env.VITE_API_URL}/api/logo`,
       );
-      setLogo(response.data ? response.data.path : null);
-      console.log(response.data ? response.data.path : null);
+      setLogo(response.data?.path || null);
     } catch (error) {
       console.error("Error fetching logo:", error);
     }
   };
 
-  useEffect(() => {
-    fetchLogo(); // লোগো ফেচ করা
-  }, []);
-
-  // --- ✅ Reload Function
-  const reload = async () => {
-    if (user && user._id) {
-      await fetchBalance(user._id);
-    }
-  };
-
+  // Load user from localStorage on initial load
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       setUser(userData);
-      if (userData && userData._id) {
+      if (userData?._id) {
         fetchBalance(userData._id);
       }
     }
     setLoading(false);
   }, []);
 
+  // Fetch logo once
+  useEffect(() => {
+    fetchLogo();
+  }, []);
+
+  // Auto refresh balance every 5 seconds
   useEffect(() => {
     let intervalId;
     if (user && user._id) {
@@ -68,11 +63,12 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(intervalId);
   }, [user]);
 
+  // ✅ Improved Login Function
   const login = (userData) => {
-    setMotherAdmin(userData);
-    setBalance(0);
+    setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
-    if (userData._id) {
+
+    if (userData?._id) {
       fetchBalance(userData._id);
     }
   };
@@ -83,7 +79,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
   };
 
-  if (loading) return null;
+  const reload = async () => {
+    if (user && user._id) {
+      await fetchBalance(user._id);
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -93,6 +93,7 @@ export const AuthProvider = ({ children }) => {
         balance,
         loading,
         setLoading,
+        login, // ← এটি Login component এ ব্যবহার করবেন
         logout,
         reload,
         logo,

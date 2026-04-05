@@ -236,7 +236,7 @@ router.post("/playgame", async (req, res) => {
       {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "x-dstgame-key": "bb10373906ea00faa6717f10f8049c61",
+          "x-dstgame-key": "5a559cc11093333dd5986df2498c6aea",
         },
       },
     );

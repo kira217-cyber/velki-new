@@ -10,6 +10,7 @@ import { useGetHomeControlsQuery } from "@/redux/features/allApis/homeControlApi
 import { useGetColorControlsQuery } from "@/redux/features/allApis/colorControlApi/colorControlApi";
 import { AuthContext } from "@/context/AuthContext";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const Navbar = () => {
   const { pathname } = useLocation();

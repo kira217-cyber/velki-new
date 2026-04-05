@@ -1,4 +1,3 @@
-import { useForm } from "react-hook-form";
 import { FaEye, FaEyeSlash, FaUser, FaRedo, FaArrowLeft } from "react-icons/fa";
 import { FaShield } from "react-icons/fa6";
 import { IoIosUnlock } from "react-icons/io";
@@ -11,14 +10,25 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 
 const Login = () => {
-  const { user, setUser, loading, setLoading } = useContext(AuthContext);
+  const { user, loading, setLoading, login } = useContext(AuthContext);
+
   const [showPassword, setShowPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [loginImage, setLoginImage] = useState("");
   const [signupLink, setSignupLink] = useState("");
+
+  // Form States
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [inputCode, setInputCode] = useState("");
+
+  const [suspendError, setSuspendError] = useState("");
+  const [errors, setErrors] = useState({});
+
   const navigate = useNavigate();
   const toastShownRef = useRef(false);
 
+  // Redirect if already logged in
   useEffect(() => {
     if (user && !toastShownRef.current) {
       toastShownRef.current = true;
@@ -40,18 +50,12 @@ const Login = () => {
       const imgRes = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/login-image`,
       );
-      if (imgRes.data && imgRes.data.loginImageUrl) {
-        setLoginImage(imgRes.data.loginImageUrl);
-      }
+      if (imgRes.data?.loginImageUrl) setLoginImage(imgRes.data.loginImageUrl);
 
       const navRes = await axios.get(
         `${import.meta.env.VITE_API_URL}/api/navbar`,
       );
-      if (navRes.data && navRes.data.signupLink) {
-        setSignupLink(navRes.data.signupLink.trim());
-      } else {
-        setSignupLink("/signup");
-      }
+      setSignupLink(navRes.data?.signupLink?.trim() || "/signup");
     } catch (err) {
       console.error("Error fetching login data:", err);
       setSignupLink("/signup");
@@ -72,79 +76,89 @@ const Login = () => {
   };
 
   const handleImageClick = () => {
-    if (!signupLink) {
-      navigate("/signup");
-      return;
-    }
-
     const isExternal = /^https?:\/\//i.test(signupLink);
     if (isExternal) {
       window.open(signupLink, "_blank", "noopener,noreferrer");
     } else {
-      navigate(signupLink);
+      navigate(signupLink || "/signup");
     }
   };
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm();
+  // ==================== HANDLE LOGIN FUNCTION ====================
+  const handleLogin = async () => {
+    // Clear previous errors
+    setSuspendError("");
+    setErrors({});
 
-  const watchInputCode = watch("inputCode", "");
-  const isLoginDisabled = !(watchInputCode === verificationCode);
+    // Simple Validation
+    const newErrors = {};
+    if (!username.trim()) newErrors.username = "Username is required";
+    if (!password) newErrors.password = "Password is required";
+    else if (password.length < 6)
+      newErrors.password = "Password must be at least 6 characters";
+    if (!inputCode.trim()) newErrors.inputCode = "Validation code is required";
 
-  // ✅ LOGIN WITH STATUS CHECK
-  const onSubmit = async (data) => {
-    const { username, password } = data;
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // Check verification code
+    if (inputCode !== verificationCode) {
+      setErrors({ inputCode: "Validation code does not match" });
+      return;
+    }
+
     try {
       setLoading(true);
 
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/admins/user-login`,
-        {
-          userName: username,
-          password: password,
-        },
+        { userName: username.trim(), password },
       );
 
       const { user: userData } = res.data;
 
-      // 🔥 STATUS CHECK
+      // ================== STATUS HANDLE ==================
       if (userData.status === "Suspend") {
-        toast.error("Your account is suspended");
-        setLoading(false); // ✅ FIX
+        const msg =
+          "Your account is suspended by the administrator. Please contact support.";
+        setSuspendError(msg);
+        toast.error(msg);
         return;
       }
 
       if (userData.status === "Locked") {
-        toast.error("Your account is locked");
-        setLoading(false); // ✅ FIX
+        const msg = "Your account is locked. Try again later.";
+        setSuspendError(msg);
+        toast.error(msg);
         return;
       }
 
-      // ✅ Only Active users can login
       if (userData.status === "Active") {
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
+        // ✅ Context এর login function ব্যবহার করা হয়েছে
+        login(userData);
 
-        toast.success("Login successful");
+        toast.success("Login successful 🎉");
 
+        // Small delay for toast visibility
         setTimeout(() => {
           if (userData.role === "MA") navigate("/ma/mother-admin");
           else if (userData.role === "SA") navigate("/sa/sub-admin");
           else navigate("/");
         }, 1200);
       } else {
-        toast.error("Unauthorized access");
-        setLoading(false); // ✅ FIX
+        const msg = "Unauthorized access";
+        setSuspendError(msg);
+        toast.error(msg);
       }
     } catch (error) {
       console.error("Login Error:", error);
+
       const msg =
         error.response?.data?.message || "Invalid username or password";
+
+      setSuspendError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -153,9 +167,9 @@ const Login = () => {
 
   return (
     <div className="bg-white min-h-screen flex flex-col relative">
-      <ToastContainer position="top-center" autoClose={2000} />
+      <ToastContainer position="top-center" autoClose={3000} />
 
-      {/* 🔙 Back Button */}
+      {/* Back Button */}
       <div className="absolute top-4 left-0 w-full z-20 px-4">
         <button
           onClick={() => navigate("/")}
@@ -172,49 +186,45 @@ const Login = () => {
       >
         <img
           src={getImageUrl(loginImage)}
-          alt="Click to Sign Up"
+          alt="Login Banner"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black opacity-0 hover:opacity-10 transition-opacity"></div>
+        <div className="absolute inset-0 bg-black opacity-0 hover:opacity-10 transition-opacity" />
       </div>
 
-      {/* Form */}
+      {/* Form Section */}
       <div className="w-full max-w-full mx-auto -mt-12 relative z-10 bg-white rounded-t-xl shadow-2xl px-10 pt-10 pb-8">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <h2 className="uppercase text-3xl font-bold text-center text-black mb-8">
+        <div className="space-y-4">
+          <h2 className="uppercase text-3xl font-bold text-center text-black">
             LOGIN
           </h2>
 
           {/* Username */}
-          <div className="relative mb-6">
+          <div className="relative">
             <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-600" />
             <Input
               type="text"
-              {...register("username", { required: "Username is required" })}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="Username"
-              className="pl-12 h-14 rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
+              className="pl-12 h-14 rounded-xl border text-md border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
             />
             {errors.username && (
               <p className="text-red-500 text-sm mt-1 ml-4">
-                {errors.username.message}
+                {errors.username}
               </p>
             )}
           </div>
 
           {/* Password */}
-          <div className="relative mb-6">
+          <div className="relative">
             <IoIosUnlock className="absolute left-4 top-1/2 -translate-y-1/2 text-3xl text-gray-600" />
             <Input
               type={showPassword ? "text" : "password"}
-              {...register("password", {
-                required: "Password is required",
-                minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                },
-              })}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="pl-12 pr-12 h-14 rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
+              className="pl-12 pr-12 h-14 text-md rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
             />
             <div
               className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl cursor-pointer text-gray-600"
@@ -224,21 +234,20 @@ const Login = () => {
             </div>
             {errors.password && (
               <p className="text-red-500 text-sm mt-1 ml-4">
-                {errors.password.message}
+                {errors.password}
               </p>
             )}
           </div>
 
-          {/* Verification */}
-          <div className="relative mb-8">
+          {/* Verification Code */}
+          <div className="relative">
             <FaShield className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-gray-600" />
             <Input
               type="text"
-              {...register("inputCode", {
-                required: "Validation code is required",
-              })}
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
               placeholder="Validation Code"
-              className="pl-12 pr-20 h-14 rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
+              className="pl-12 pr-20 h-14 text-md rounded-xl border border-gray-400 focus:ring-2 focus:ring-yellow-500 w-full"
             />
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
               <span className="font-bold text-3xl text-black">
@@ -248,26 +257,37 @@ const Login = () => {
                 className="text-2xl cursor-pointer text-gray-600 hover:text-black"
                 onClick={() => {
                   generateVerificationCode();
-                  reset({ inputCode: "" });
+                  setInputCode("");
                 }}
               />
             </div>
             {errors.inputCode && (
               <p className="text-red-500 text-sm mt-1 ml-4">
-                {errors.inputCode.message}
+                {errors.inputCode}
               </p>
             )}
           </div>
 
-          {/* Button */}
+          {/* Login Button */}
           <Button
-            type="submit"
-            disabled={isLoginDisabled || loading}
+            type="button"
+            onClick={handleLogin}
+            disabled={loading || inputCode !== verificationCode}
             className="w-full bg-[#ffc800] hover:bg-[#e6b800] text-black font-bold text-lg py-7 rounded-xl disabled:opacity-60"
           >
-            {loading ? "Loading..." : "Login"}
+            {loading ? "Logging in..." : "Login"}
           </Button>
-        </form>
+
+          {/* Suspend / Error Message */}
+          {suspendError && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-300 rounded-2xl flex items-start gap-3">
+              <div className="text-red-600 mt-0.5">⚠️</div>
+              <p className="text-red-700 text-[15px] leading-relaxed font-medium">
+                {suspendError}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

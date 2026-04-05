@@ -16,21 +16,21 @@ const Footer = () => {
         <Link
           target="_blank"
           rel="noreferrer noopenner"
-          to="https://t.me/+fHC2LQO4BAg2MmRk"
+          to="https://t.me/AkashMalik7"
         >
           <FaTelegram className="text-4xl" />
         </Link>
         <Link
           target="_blank"
           rel="noreferrer noopenner"
-          to="https://wa.me/+33756757364"
+          to="https://wa.me/+6583491278"
         >
           <FaWhatsappSquare className="text-4xl" />
         </Link>
         <Link
           target="_blank"
           rel="noreferrer noopenner"
-          to="https://www.facebook.com/oracletechnologyindia"
+          to="https://www.facebook.com/share/1AiuDopecs/?mibextid=wwXIfr"
         >
           <FaFacebook className="text-4xl" />
         </Link>

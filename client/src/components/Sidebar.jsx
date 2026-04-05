@@ -5,26 +5,39 @@ import { IoIosArrowForward } from "react-icons/io";
 import { FaGear } from "react-icons/fa6";
 import { RiLogoutCircleLine } from "react-icons/ri";
 import { BsGlobe2 } from "react-icons/bs";
-import { useDispatch } from "react-redux";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
 
 const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
   const { logout } = useContext(AuthContext);
-  // const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    try {
+      // Context থেকে logout করা
+      logout();
 
-  const handleLogout = () => {
-    logout();
-    localStorage.removeItem("user");
-    toast.success("Logout successful", {
-      appearance: "success",
-      autoDismiss: true,
-    });
-    navigate("/");
-    toggleSidebar();
+      // Toast দেখানো
+      toast.success("Logout successful ✅", {
+        position: "top-center",
+        autoClose: 2000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      });
+
+      // Sidebar বন্ধ করা
+      toggleSidebar();
+
+      // ছোট delay দিয়ে navigate করা (toast দেখানোর জন্য)
+      setTimeout(() => {
+        navigate("/");
+      }, 800);
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Something went wrong during logout");
+    }
   };
 
   return (
@@ -40,7 +53,9 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
           onClick={toggleSidebar}
         />
       </div>
-      <ul className=" bg-white mx-6">
+
+      {/* Menu Items */}
+      <ul className="bg-white mx-6">
         {menuItems.map(({ id, label, Icon, link, count }) => (
           <li
             key={id}
@@ -60,15 +75,16 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
                   </span>
                 )}
               </div>
-
               <IoIosArrowForward className="text-3xl" />
             </Link>
           </li>
         ))}
       </ul>
+
+      {/* Setting & Logout */}
       <div className="mt-3">
         <ul className="mx-6 flex flex-col gap-3">
-          <li className=" bg-white flex items-center gap-2 p-3 rounded-2xl">
+          <li className="bg-white flex items-center gap-2 p-3 rounded-2xl">
             <Link
               to="/setting"
               className="flex items-center justify-between text-gray-800 w-full"
@@ -78,12 +94,16 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
                 <FaGear className="text-xl" />
                 <span className="text-base whitespace-nowrap">Setting</span>
               </div>
-
               <IoIosArrowForward className="text-3xl" />
             </Link>
           </li>
-          <li onClick={handleLogout} className=" cursor-pointer bg-[#d4e0e5] flex items-center justify-between p-3 rounded-2xl">
-            <button  className="flex items-center gap-2">
+
+          {/* Logout Button */}
+          <li
+            onClick={handleLogout}
+            className="cursor-pointer bg-[#d4e0e5] flex items-center justify-between p-3 rounded-2xl active:bg-red-100 transition-colors"
+          >
+            <button className="flex items-center gap-2">
               <RiLogoutCircleLine className="text-xl" />
               <span className="text-base whitespace-nowrap">Logout</span>
             </button>
@@ -91,6 +111,8 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
           </li>
         </ul>
       </div>
+
+      {/* Time Zone */}
       <div className="flex flex-row items-center justify-center gap-2 text-slate-500 py-7">
         <BsGlobe2 className="text-xl" />
         <h1 className="text-base font-semibold">Time Zone: GMT+5:30</h1>
